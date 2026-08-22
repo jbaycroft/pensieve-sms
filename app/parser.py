@@ -13,12 +13,12 @@ from dataclasses import dataclass
 from typing import Optional
 
 DOMAIN_MAP: dict[str, str] = {
-    "w": "work",        "work": "work",
-    "h": "hydroponics", "hydro": "hydroponics",
-    "p": "property",    "prop": "property",
-    "f": "physical",    "fit": "physical",
-    "ho": "hobby",      "hobby": "hobby",
-    "c": "connection",  "connect": "connection",
+    "w": "work",              "work": "work",
+    "h": "hydroponics",       "hydro": "hydroponics",     "hydroponics": "hydroponics",
+    "p": "property",          "prop": "property",          "property": "property",
+    "f": "physical",          "fit": "physical",           "physical": "physical",
+    "ho": "hobby",            "hobby": "hobby",
+    "c": "connection",        "connect": "connection",     "connection": "connection",
 }
 
 
