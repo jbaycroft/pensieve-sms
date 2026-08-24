@@ -99,8 +99,8 @@ if ! command -v cloudflared &>/dev/null; then
   elif command -v paru &>/dev/null; then
     paru -S --noconfirm cloudflared
   else
-    # direct binary
-    CFVER=$(curl -s https://api.github.com/repos/cloudflare/cloudflared/releases/latest | grep tag_name | cut -d'"' -f4)
+    CFVER=$(curl -s https://api.github.com/repos/cloudflare/cloudflared/releases/latest \
+      | grep tag_name | cut -d'"' -f4)
     curl -sL "https://github.com/cloudflare/cloudflared/releases/download/${CFVER}/cloudflared-linux-amd64" \
       -o /tmp/cloudflared
     sudo install -m 755 /tmp/cloudflared /usr/local/bin/cloudflared
@@ -108,9 +108,98 @@ if ! command -v cloudflared &>/dev/null; then
 fi
 ok "cloudflared $(cloudflared --version | head -1)"
 
-# Write a systemd unit for the quick tunnel
-# The URL assigned by Cloudflare is captured from the log and written to $SVC_URL_FILE
-sudo tee /etc/systemd/system/pensieve-tunnel.service > /dev/null <<'UNIT'
+# ── Cloudflare login ──────────────────────────────────────────────────────────
+echo ""
+echo "  Logging in to Cloudflare (free account required)."
+echo "  A URL will be printed below — open it in a browser to authenticate."
+echo "  If a browser opens automatically, complete the login there."
+echo ""
+cloudflared tunnel login
+ok "Cloudflare login complete"
+
+# ── Named tunnel or quick tunnel? ─────────────────────────────────────────────
+echo ""
+echo -e "  ${YLW}Do you have a domain managed by Cloudflare?${NC}"
+echo "  (e.g. yourdomain.com registered at Cloudflare or using Cloudflare nameservers)"
+echo "  A named tunnel gives you a permanent, human-readable webhook URL."
+echo "  If you don't have one yet, get one at: cloudflare.com/products/registrar"
+echo "  (cheapest option: ~\$10/yr for a .com, no markup)"
+echo ""
+read -r -p "  Do you have a Cloudflare-managed domain? [y/N] " HAS_DOMAIN
+
+TUNNEL_NAME="pensieve"
+TUNNEL_URL=""
+
+if [[ "${HAS_DOMAIN,,}" == "y" ]]; then
+  echo ""
+  echo -e "  ${YLW}Enter the hostname for the Twilio webhook${NC}"
+  echo "  Example: webhook.yourdomain.com  or  sms.yourdomain.com"
+  read -r -p "  ▶ " WEBHOOK_HOST
+  [[ -z "$WEBHOOK_HOST" ]] && die "Hostname required"
+
+  # Create tunnel (ok if already exists)
+  cloudflared tunnel create "$TUNNEL_NAME" 2>/dev/null || true
+
+  TUNNEL_ID=$(cloudflared tunnel list --output json \
+    | python3 -c "
+import sys, json
+tunnels = json.load(sys.stdin)
+match = [t for t in tunnels if t['name'] == '${TUNNEL_NAME}']
+print(match[0]['id'] if match else '')
+" 2>/dev/null)
+  [[ -z "$TUNNEL_ID" ]] && die "Could not find tunnel ID"
+
+  # Write cloudflared config
+  mkdir -p "$HOME/.cloudflared"
+  cat > "$HOME/.cloudflared/config.yml" <<EOF
+tunnel: ${TUNNEL_ID}
+credentials-file: ${HOME}/.cloudflared/${TUNNEL_ID}.json
+
+ingress:
+  - hostname: ${WEBHOOK_HOST}
+    service: http://127.0.0.1:5005
+  - service: http_status:404
+EOF
+
+  # Route DNS
+  cloudflared tunnel route dns "$TUNNEL_NAME" "$WEBHOOK_HOST"
+
+  # Install as systemd service
+  sudo tee /etc/systemd/system/pensieve-tunnel.service > /dev/null <<UNIT
+[Unit]
+Description=Pensieve Cloudflare Named Tunnel
+After=network.target pensieve-flask.service
+Requires=pensieve-flask.service
+
+[Service]
+Type=simple
+User=${USER}
+ExecStart=/usr/bin/cloudflared tunnel --config ${HOME}/.cloudflared/config.yml run ${TUNNEL_NAME}
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+  sudo systemctl daemon-reload
+  sudo systemctl enable pensieve-tunnel
+  sudo systemctl restart pensieve-tunnel
+  sleep 3
+
+  TUNNEL_URL="https://${WEBHOOK_HOST}"
+  ok "Named tunnel active → ${TUNNEL_URL}"
+  echo ""
+  warn "This URL is permanent. It will not change on reboot."
+
+else
+  # ── Quick tunnel fallback ─────────────────────────────────────────────────
+  warn "No domain — using quick tunnel (trycloudflare.com)."
+  warn "URL will change if this machine reboots. Update Twilio when that happens."
+  warn "To get a permanent URL later: register a domain at cloudflare.com/products/registrar"
+  warn "then re-run this script."
+
+  sudo tee /etc/systemd/system/pensieve-tunnel.service > /dev/null <<UNIT
 [Unit]
 Description=Pensieve Cloudflare Quick Tunnel
 After=network.target pensieve-flask.service
@@ -118,7 +207,7 @@ Requires=pensieve-flask.service
 
 [Service]
 Type=simple
-User=REPLACE_USER
+User=${USER}
 ExecStart=/usr/bin/cloudflared tunnel --url http://127.0.0.1:5005 \
     --no-autoupdate \
     --logfile /var/log/cloudflared-pensieve.log \
@@ -130,26 +219,21 @@ RestartSec=10
 WantedBy=multi-user.target
 UNIT
 
-# Substitute actual username
-sudo sed -i "s/REPLACE_USER/$USER/" /etc/systemd/system/pensieve-tunnel.service
-sudo systemctl daemon-reload
-sudo systemctl enable pensieve-tunnel
-sudo systemctl restart pensieve-tunnel
+  sudo systemctl daemon-reload
+  sudo systemctl enable pensieve-tunnel
+  sudo systemctl restart pensieve-tunnel
 
-# Wait for tunnel URL to appear in log (up to 30s)
-echo "  Waiting for tunnel URL…"
-TUNNEL_URL=""
-for i in $(seq 1 30); do
-  TUNNEL_URL=$(grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' \
-    /var/log/cloudflared-pensieve.log 2>/dev/null | tail -1)
-  [[ -n "$TUNNEL_URL" ]] && break
-  sleep 1
-done
-
-[[ -z "$TUNNEL_URL" ]] && die "Tunnel URL not found after 30s — check: journalctl -u pensieve-tunnel"
-
-echo "$TUNNEL_URL" | sudo tee "$SVC_URL_FILE" > /dev/null
-ok "Tunnel active: $TUNNEL_URL"
+  echo "  Waiting for tunnel URL…"
+  for i in $(seq 1 30); do
+    TUNNEL_URL=$(grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' \
+      /var/log/cloudflared-pensieve.log 2>/dev/null | tail -1)
+    [[ -n "$TUNNEL_URL" ]] && break
+    sleep 1
+  done
+  [[ -z "$TUNNEL_URL" ]] && die "Tunnel URL not found — check: journalctl -u pensieve-tunnel"
+  echo "$TUNNEL_URL" | sudo tee "$SVC_URL_FILE" > /dev/null
+  ok "Quick tunnel active: $TUNNEL_URL"
+fi
 
 # ── 6. done ───────────────────────────────────────────────────────────────────
 hdr "Step 6/6 — Final step (you do this one)"
