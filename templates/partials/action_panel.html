@@ -1,0 +1,93 @@
+{% if action.type == 'coffee' %}
+{# ── Coffee panel ─────────────────────────────────────────────────────────── #}
+<div x-data="{
+  size:     '{{ prefs.size }}',
+  drink:    '{{ prefs.drink }}',
+  notes:    '{{ prefs.notes | replace("'", "\\'") }}',
+  remember: true,
+  submit() { $root.fireAction('coffee', {size:this.size, drink:this.drink, notes:this.notes, remember:this.remember}); }
+}">
+  <div class="flex items-center justify-between mb-5">
+    <h3 class="font-semibold text-white">☕ Coffee for
+      <span class="text-red-400" x-text="$root.user"></span>
+    </h3>
+    <button @click="$root.openPanel=null" class="text-gray-500 hover:text-white text-lg leading-none">✕</button>
+  </div>
+
+  <div class="mb-4">
+    <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Size</div>
+    <div class="flex gap-2">
+      {% for s in ['small','medium','large'] %}
+      <button @click="size='{{ s }}'"
+        :class="size==='{{ s }}' ? 'bg-red-800 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'"
+        class="flex-1 py-2 rounded-xl text-sm font-medium transition-all capitalize">{{ s }}</button>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="mb-4">
+    <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Drink</div>
+    <div class="flex flex-wrap gap-2">
+      {% for d in ['drip','espresso','latte','cappuccino','americano','cold brew'] %}
+      <button @click="drink='{{ d }}'"
+        :class="drink==='{{ d }}' ? 'bg-red-800 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'"
+        class="px-3 py-1.5 rounded-xl text-sm font-medium transition-all capitalize">{{ d }}</button>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="mb-5">
+    <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Notes</div>
+    <input type="text" x-model="notes" placeholder="oat milk, 1 sugar, extra shot…"
+      class="w-full bg-gray-700 text-white rounded-xl px-4 py-2.5 text-sm outline-none
+             focus:ring-2 focus:ring-red-600 placeholder-gray-500">
+  </div>
+
+  <div class="flex items-center justify-between">
+    <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer select-none">
+      <input type="checkbox" x-model="remember" class="rounded accent-red-600">
+      Remember
+    </label>
+    <button @click="submit()"
+      class="bg-red-700 hover:bg-red-600 text-white font-bold rounded-xl px-7 py-2.5
+             text-sm transition-all active:scale-95">
+      Queue it
+    </button>
+  </div>
+</div>
+
+{% elif action.type == 'prefilled' %}
+{# ── Prefilled: one-tap ───────────────────────────────────────────────────── #}
+<div>
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="font-semibold text-white">{{ action.icon }} {{ action.label }}</h3>
+    <button @click="$root.openPanel=null" class="text-gray-500 hover:text-white text-lg leading-none">✕</button>
+  </div>
+  <p class="text-sm text-gray-400 mb-5">{{ action.task }}</p>
+  <button @click="$root.fireAction('{{ action.id }}', {})"
+    class="w-full bg-red-700 hover:bg-red-600 text-white font-bold rounded-xl py-3 text-sm
+           transition-all active:scale-95">
+    Queue it
+  </button>
+</div>
+
+{% else %}
+{# ── Freeform ─────────────────────────────────────────────────────────────── #}
+<div x-data="{ body: '' }">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="font-semibold text-white">{{ action.icon }} {{ action.label }}</h3>
+    <button @click="$root.openPanel=null" class="text-gray-500 hover:text-white text-lg leading-none">✕</button>
+  </div>
+  <input type="text" x-model="body"
+    @keydown.enter="$root.fireAction('{{ action.id }}', {body})"
+    placeholder="What needs doing?"
+    class="w-full bg-gray-700 text-white rounded-xl px-4 py-3 mb-3 outline-none
+           focus:ring-2 focus:ring-red-600 placeholder-gray-500 text-sm"
+    x-init="$nextTick(() => $el.focus())">
+  <button @click="$root.fireAction('{{ action.id }}', {body})"
+    class="w-full bg-red-700 hover:bg-red-600 text-white font-bold rounded-xl py-3 text-sm
+           transition-all active:scale-95">
+    Queue it
+  </button>
+</div>
+{% endif %}

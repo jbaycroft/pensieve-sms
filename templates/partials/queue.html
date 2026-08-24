@@ -1,0 +1,28 @@
+{% if tickets %}
+  {% for t in tickets %}
+  <div class="flex items-start gap-3 bg-gray-800 border border-gray-750 rounded-xl px-4 py-3 mb-2">
+    <span class="text-xs font-bold mt-0.5 w-5 shrink-0 text-center
+      {% if t.priority in ('critical','urgent') %}text-red-400
+      {% elif t.priority == 'high' %}text-yellow-400
+      {% else %}text-gray-600{% endif %}">
+      {{ loop.index }}
+    </span>
+    <div class="flex-1 min-w-0">
+      <div class="text-sm text-white font-medium leading-snug">{{ t.title }}</div>
+      <div class="text-xs text-gray-500 mt-1">
+        {{ t.domain }}{% if t.est_min %} · {{ t.est_min }} min{% endif %}
+        {% if t.status == 'active' %}
+          <span class="text-green-400 ml-1">● active</span>
+        {% endif %}
+      </div>
+    </div>
+    {% if loop.first %}
+    <span class="text-xs bg-red-950 text-red-400 border border-red-900 rounded-full px-2 py-0.5 shrink-0 font-medium">
+      HEAD
+    </span>
+    {% endif %}
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="text-gray-600 text-sm text-center py-10">Queue is empty.</div>
+{% endif %}

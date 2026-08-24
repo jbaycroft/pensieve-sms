@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#9b1d20">
+  <title>The Burrow</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/static/icon-192.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    body { background: #0f0f1a; color: #e8e8f0; font-family: system-ui, -apple-system, sans-serif; }
+    .pb-safe { padding-bottom: max(1.5rem, env(safe-area-inset-bottom)); }
+    .htmx-indicator { opacity: 0; transition: opacity 200ms; }
+    .htmx-request .htmx-indicator { opacity: 1; }
+  </style>
+</head>
+<body class="min-h-screen" x-data="burrow()" x-cloak>
+
+  {% block content %}{% endblock %}
+
+  <!-- Toast -->
+  <div x-show="toast" x-transition
+    class="fixed bottom-8 left-4 right-4 max-w-lg mx-auto bg-gray-700 border border-gray-600
+           text-white rounded-2xl px-5 py-4 shadow-2xl text-sm z-50 pb-safe">
+    <span x-text="toast"></span>
+  </div>
+
+  <script>
+  function burrow() {
+    return {
+      user:      localStorage.getItem('burrow_user') || 'John',
+      priority:  'normal',
+      openPanel: null,
+      taskBody:  '',
+      taskDomain:'',
+      toast:     null,
+      _toastTimer: null,
+
+      setUser(u) {
+        this.user = u;
+        localStorage.setItem('burrow_user', u);
+        if (this.openPanel) this.openPanel = null;
+      },
+
+      showToast(msg) {
+        this.toast = msg;
+        clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => this.toast = null, 4000);
+      },
+
+      async submitTask() {
+        const body = this.taskBody.trim();
+        if (!body) return;
+        const prefix      = this.priority === 'urgent' ? '!! '
+                          : this.priority === 'high'   ? '! ' : '';
+        const domPrefix   = this.taskDomain ? this.taskDomain + ': ' : '';
+        const payload     = prefix + domPrefix + body;
+        const res  = await fetch('/api/task', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ body: payload, user: this.user }),
+        });
+        const data = await res.json();
+        if (data.ticket_id) {
+          this.showToast(data.ack + ' — ' + data.enhanced);
+          this.taskBody = '';
+          this.taskDomain = '';
+          this.priority = 'normal';
+          htmx.trigger('#queue-list', 'refresh');
+        } else {
+          this.showToast('Error: ' + (data.error || 'unknown'));
+        }
+      },
+
+      async fireAction(actionId, payload) {
+        const res  = await fetch('/api/quick-action', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ action_id: actionId, user: this.user,
+                                 priority: this.priority, ...payload }),
+        });
+        const data = await res.json();
+        if (data.ticket_id) {
+          this.showToast(data.ack + ' — ' + data.enhanced);
+          this.openPanel = null;
+          this.priority = 'normal';
+          htmx.trigger('#queue-list', 'refresh');
+        } else {
+          this.showToast('Error: ' + (data.error || 'unknown'));
+        }
+      },
+    }
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+  </script>
+</body>
+</html>
