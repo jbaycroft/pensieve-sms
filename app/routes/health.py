@@ -54,6 +54,10 @@ def health() -> Response:
     except Exception:
         queue_depth = -1
 
+    # LLM backend status
+    from ..enhancer import LLM_BACKEND, OLLAMA_BASE_URL, OLLAMA_MODEL, _check_ollama_available
+    ollama_up = _check_ollama_available() if LLM_BACKEND == "ollama" else None
+
     status = "ok" if (db_healthy and vault_healthy) else "degraded"
     payload = {
         "status": status,
@@ -63,6 +67,9 @@ def health() -> Response:
         "db_message": db_msg,
         "vault_ok": vault_healthy,
         "queue_depth": queue_depth,
+        "llm_backend": LLM_BACKEND,
+        "ollama_model": OLLAMA_MODEL,
+        "ollama_available": ollama_up,
     }
     http_code = 200 if status == "ok" else 503
     return jsonify(payload), http_code

@@ -192,10 +192,140 @@ if should_run 2; then
   CF_BIN=$(command -v cloudflared)
   ok "cloudflared path: $CF_BIN"
 
+  # ── Ollama (local LLM) ────────────────────────────────────────────────────
+  # Ollama enables air-gapped operation — no Gemini API key required.
+  # The installer configures Ollama as the primary LLM backend.
+  # Gemini is retained as an automatic fallback if Ollama is unreachable.
+  echo ""
+  info "Ollama — local LLM server for offline enhancement"
+  info "Recommended model: qwen2.5:1.5b (~1 GB RAM, best quality/size ratio)"
+  info "Alternatives: qwen2.5:0.5b (~400 MB), phi3.5 (~2 GB), tinyllama (~600 MB)"
+  echo ""
+
+  OLLAMA_INSTALLED=0
+  OLLAMA_SVC_EXISTS=0
+
+  # ── detect existing installation ──────────────────────────────────────────
+  if command -v ollama &>/dev/null; then
+    OLLAMA_VER=$(ollama --version 2>/dev/null | head -1 || echo "unknown")
+    ok "Ollama already installed: ${OLLAMA_VER}"
+    OLLAMA_INSTALLED=1
+  fi
+
+  if systemctl list-unit-files ollama.service &>/dev/null 2>&1 \
+     || [[ -f /etc/systemd/system/ollama.service ]] \
+     || [[ -f /usr/lib/systemd/system/ollama.service ]]; then
+    ok "ollama.service already registered with systemd"
+    OLLAMA_SVC_EXISTS=1
+  fi
+
+  # ── install if not present ────────────────────────────────────────────────
+  if [[ $OLLAMA_INSTALLED -eq 0 ]]; then
+    info "Installing Ollama..."
+
+    OLLAMA_OK=0
+
+    # Try AUR helpers first (preferred on Arch)
+    if command -v yay &>/dev/null; then
+      yay -S --noconfirm ollama-bin 2>&1 | grep -E '(installing|error|warning:)' || true
+      command -v ollama &>/dev/null && OLLAMA_OK=1
+    fi
+
+    if [[ $OLLAMA_OK -eq 0 ]] && command -v paru &>/dev/null; then
+      paru -S --noconfirm ollama-bin 2>&1 | grep -E '(installing|error|warning:)' || true
+      command -v ollama &>/dev/null && OLLAMA_OK=1
+    fi
+
+    # Official install script as fallback (installs to /usr/local/bin + creates systemd unit)
+    if [[ $OLLAMA_OK -eq 0 ]]; then
+      info "No AUR helper available — using Ollama official install script"
+      curl -fsSL --max-time 60 https://ollama.com/install.sh | sh \
+        && command -v ollama &>/dev/null && OLLAMA_OK=1 \
+        || warn "Ollama official install script failed"
+    fi
+
+    if [[ $OLLAMA_OK -eq 0 ]]; then
+      warn "Could not install Ollama automatically."
+      warn "Install manually: https://ollama.com/download/linux"
+      warn "Then run: ollama pull qwen2.5:1.5b && sudo systemctl enable --now ollama"
+      warn "Continuing with Gemini as the primary LLM backend."
+    else
+      ok "Ollama installed: $(ollama --version 2>/dev/null | head -1)"
+    fi
+    OLLAMA_INSTALLED=$OLLAMA_OK
+  fi
+
+  # ── enable + start ollama.service ─────────────────────────────────────────
+  if [[ $OLLAMA_INSTALLED -eq 1 ]]; then
+    if systemctl is-active --quiet ollama 2>/dev/null; then
+      ok "ollama.service already running"
+    else
+      sudo systemctl enable ollama 2>/dev/null || true
+      sudo systemctl start ollama  2>/dev/null || true
+      sleep 2
+      if systemctl is-active --quiet ollama 2>/dev/null; then
+        ok "ollama.service started"
+      else
+        warn "ollama.service failed to start — check: sudo journalctl -u ollama -n 20"
+        warn "Continuing; Flask will fall back to Gemini for LLM calls."
+      fi
+    fi
+  fi
+
+  # ── model pull ────────────────────────────────────────────────────────────
+  if [[ $OLLAMA_INSTALLED -eq 1 ]] && systemctl is-active --quiet ollama 2>/dev/null; then
+    echo ""
+    echo "  Select the Ollama model to use (press Enter for default):"
+    echo "    1) qwen2.5:1.5b     ~1 GB  [default — best quality/size]"
+    echo "    2) qwen2.5:0.5b     ~400 MB [minimal footprint]"
+    echo "    3) phi3.5           ~2 GB  [best reasoning]"
+    echo "    4) tinyllama        ~600 MB [lowest quality]"
+    echo "    5) Custom (type model tag)"
+    echo ""
+    read -rp "  Choice [1]: " _MODEL_CHOICE
+    case "${_MODEL_CHOICE:-1}" in
+      1|"") OLLAMA_MODEL_TAG="qwen2.5:1.5b" ;;
+      2)    OLLAMA_MODEL_TAG="qwen2.5:0.5b" ;;
+      3)    OLLAMA_MODEL_TAG="phi3.5" ;;
+      4)    OLLAMA_MODEL_TAG="tinyllama" ;;
+      5)    read -rp "  Model tag: " OLLAMA_MODEL_TAG ;;
+      *)    OLLAMA_MODEL_TAG="qwen2.5:1.5b" ;;
+    esac
+
+    # Check if model is already present
+    if ollama list 2>/dev/null | grep -q "${OLLAMA_MODEL_TAG%%:*}"; then
+      ok "Model '${OLLAMA_MODEL_TAG}' already pulled"
+    else
+      info "Pulling model '${OLLAMA_MODEL_TAG}'… (this may take several minutes)"
+      if ollama pull "${OLLAMA_MODEL_TAG}" 2>&1; then
+        ok "Model '${OLLAMA_MODEL_TAG}' ready"
+      else
+        warn "Model pull failed — re-run manually: ollama pull ${OLLAMA_MODEL_TAG}"
+        warn "Falling back to Gemini until model is available."
+        OLLAMA_INSTALLED=0  # don't set LLM_BACKEND=ollama if model failed
+      fi
+    fi
+  else
+    OLLAMA_MODEL_TAG="qwen2.5:1.5b"  # set default even if install failed
+  fi
+
+  # Expose for step 6/7 to write into pensieve.env
+  if [[ $OLLAMA_INSTALLED -eq 1 ]]; then
+    _USE_OLLAMA=1
+  else
+    _USE_OLLAMA=0
+  fi
+
   step_done 2
 else
   ok "Step 2 skipped (already done)"
   CF_BIN=$(command -v cloudflared 2>/dev/null || echo "/usr/local/bin/cloudflared")
+  OLLAMA_MODEL_TAG="${OLLAMA_MODEL_TAG:-qwen2.5:1.5b}"
+  if command -v ollama &>/dev/null && systemctl is-active --quiet ollama 2>/dev/null; then
+    _USE_OLLAMA=1
+  else
+    _USE_OLLAMA=0
+  fi
 fi
 
 # ═══════════════════════════════════════════════════
@@ -440,6 +570,15 @@ if should_run 7; then
     [[ -f "$ENV_FILE" ]] || die "No credentials collected and $ENV_FILE does not exist. Delete checkpoint and re-run."
     info "Using existing $ENV_FILE"
   else
+    # Determine LLM backend based on what step 2 installed
+    if [[ "${_USE_OLLAMA:-0}" -eq 1 ]]; then
+      _LLM_BACKEND="ollama"
+      ok "LLM backend: Ollama (primary) + Gemini (fallback)"
+    else
+      _LLM_BACKEND="gemini"
+      ok "LLM backend: Gemini (primary) + Ollama (fallback if available)"
+    fi
+
     printf '%s\n' \
       "TWILIO_ACCOUNT_SID=${SID}" \
       "TWILIO_AUTH_TOKEN=${TOKEN}" \
@@ -450,6 +589,10 @@ if should_run 7; then
       "VAULT_ROOT=${VAULT}" \
       "ENHANCE_MOCK=0" \
       "TEST_ENDPOINT_ENABLED=0" \
+      "LLM_BACKEND=${_LLM_BACKEND}" \
+      "OLLAMA_BASE_URL=http://localhost:11434" \
+      "OLLAMA_MODEL=${OLLAMA_MODEL_TAG:-qwen2.5:1.5b}" \
+      "OLLAMA_TIMEOUT=15" \
     | sudo tee "$ENV_FILE" > /dev/null
     sudo chmod 600 "$ENV_FILE"
     ok "Credentials written to $ENV_FILE (mode 600)"
