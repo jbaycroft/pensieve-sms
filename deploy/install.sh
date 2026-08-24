@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # ============================================================
 #   The Burrow — end-to-end Arch Linux installer (hardened)
 #   theburrow.house · pensieve-sms · 2026
@@ -70,6 +70,14 @@ DOMAIN="theburrow.house"
 HUB_HOST="hub.${DOMAIN}"
 SMS_HOST="sms.${DOMAIN}"
 
+# ── pre-initialise variables used across steps ────────────────
+# Prevents set -u from firing if a step is skipped on resume.
+PYTHON=""
+CF_BIN=""
+# Credential vars — populated in step 6, re-checked in step 7 + 10
+SID=""; TOKEN=""; FROM=""; ALLOWLIST=""; JEANNIE=""; GEMINI=""; VAULT=""
+CF_ACCOUNT_ID=""; CF_API_TOKEN=""; JOHN_EMAIL=""; JEANNIE_EMAIL=""
+
 # ── banner ────────────────────────────────────────────────────
 echo ""
 echo -e "${BLU}╔═══════════════════════════════════════════════════════╗${NC}"
@@ -115,7 +123,12 @@ ping -c1 -W3 8.8.8.8 &>/dev/null || die "No internet. Check your connection."
 ok "Internet: OK"
 
 command -v sudo &>/dev/null || die "sudo not found. Install it: pacman -S sudo"
-command -v curl &>/dev/null || command -v wget &>/dev/null || die "Neither curl nor wget found."
+command -v curl &>/dev/null || die "curl not found. Install: sudo pacman -S curl"
+
+# Pacman database lock — left behind by interrupted installs
+if [[ -f /var/lib/pacman/db.lck ]]; then
+  die "pacman database is locked (/var/lib/pacman/db.lck). If no pacman process is running, remove it: sudo rm /var/lib/pacman/db.lck"
+fi
 
 step_done 1
 
@@ -198,14 +211,23 @@ if should_run 3; then
   # Only modify nsswitch.conf if systemd-resolved isn't handling mDNS
   if systemctl is-active --quiet systemd-resolved 2>/dev/null; then
     warn "systemd-resolved is active — skipping nsswitch.conf modification"
-    warn "If pensieve.local doesn't resolve, configure mDNS via resolved.conf"
+    warn "If pensieve.local doesn't resolve, set MulticastDNS=yes in /etc/systemd/resolved.conf"
   else
     if ! grep -q 'mdns4_minimal' /etc/nsswitch.conf 2>/dev/null; then
-      sudo sed -i \
-        's/^hosts:.*/hosts: mymachines mdns4_minimal [NOTFOUND=return] resolve [!UNAVAIL=return] files myhostname dns/' \
-        /etc/nsswitch.conf \
-        && ok "nsswitch.conf updated for mDNS" \
-        || warn "nsswitch.conf update failed — mDNS may not work"
+      if grep -q '^hosts:' /etc/nsswitch.conf 2>/dev/null; then
+        # Replace existing hosts line
+        sudo sed -i \
+          's/^hosts:.*/hosts: mymachines mdns4_minimal [NOTFOUND=return] resolve [!UNAVAIL=return] files myhostname dns/' \
+          /etc/nsswitch.conf \
+          && ok "nsswitch.conf updated for mDNS" \
+          || warn "nsswitch.conf update failed — mDNS may not work"
+      else
+        # No hosts: line at all — append one (minimal Arch installs)
+        echo 'hosts: mymachines mdns4_minimal [NOTFOUND=return] resolve [!UNAVAIL=return] files myhostname dns' \
+          | sudo tee -a /etc/nsswitch.conf > /dev/null \
+          && ok "nsswitch.conf: hosts line added for mDNS" \
+          || warn "Could not write nsswitch.conf — mDNS may not resolve"
+      fi
     else
       ok "mDNS already in nsswitch.conf"
     fi
@@ -311,8 +333,9 @@ if should_run 5; then
   step_done 5
 else
   ok "Step 5 skipped (already done)"
-  # Detect PYTHON for later steps even when skipping
-  PYTHON=$(command -v python || command -v python3)
+  # Detect PYTHON for later steps — safe even if python3 is the only name
+  PYTHON=$(command -v python 2>/dev/null || command -v python3 2>/dev/null || true)
+  [[ -z "${PYTHON:-}" ]] && die "Python not found. Run: sudo pacman -S python"
 fi
 
 # ═══════════════════════════════════════════════════
@@ -436,8 +459,8 @@ else
   ok "Step 7 skipped (already done)"
 fi
 
-# Re-read VAULT from env file for later steps
-VAULT=$(sudo grep "^VAULT_ROOT=" "$ENV_FILE" 2>/dev/null | cut -d= -f2 || echo "$HOME/vault/Pensieve")
+# Re-read VAULT from env file for later steps (f2- handles paths with = in them)
+VAULT=$(sudo grep "^VAULT_ROOT=" "$ENV_FILE" 2>/dev/null | cut -d= -f2- || echo "$HOME/vault/Pensieve")
 
 # ═══════════════════════════════════════════════════
 # STEP 8 — Flask systemd service
@@ -494,7 +517,7 @@ UNIT
     # Show last log lines to help diagnose
     echo ""
     echo "  Flask service log (last 20 lines):"
-    journalctl -u pensieve-flask -n 20 --no-pager 2>/dev/null || true
+    sudo journalctl -u pensieve-flask -n 20 --no-pager 2>/dev/null || true
     echo ""
     die "Flask not responding on port 5005. Fix the issue and re-run."
   fi
@@ -527,20 +550,39 @@ if should_run 9; then
     && ok "Tunnel '${TUNNEL_NAME}' created" \
     || ok "Tunnel '${TUNNEL_NAME}' already exists"
 
-  # Get tunnel ID — handle empty output gracefully
+  # Get tunnel ID — cloudflared tunnel list returns a JSON array
+  # Older versions emit bare [], newer may emit {"result":[],...}
   TUNNEL_LIST_JSON=$("$CF_BIN" tunnel list --output json 2>/dev/null || echo "[]")
   TUNNEL_ID=$(echo "$TUNNEL_LIST_JSON" | python -c "
 import sys, json
 try:
-  tunnels = json.load(sys.stdin) or []
-  match = [t for t in tunnels if t.get('name') == '${TUNNEL_NAME}']
-  print(match[0]['id'] if match else '')
+    raw = json.load(sys.stdin)
+    # Handle both bare array and {result: [...]} wrapper
+    tunnels = raw if isinstance(raw, list) else raw.get('result', []) or []
+    match = [t for t in tunnels if isinstance(t, dict) and t.get('name') == '${TUNNEL_NAME}']
+    print(match[0]['id'] if match else '')
 except Exception:
-  print('')
+    print('')
 " 2>/dev/null)
 
-  [[ -z "$TUNNEL_ID" ]] && die "Could not retrieve tunnel ID for '${TUNNEL_NAME}'. Run: cloudflared tunnel list"
+  if [[ -z "${TUNNEL_ID:-}" ]]; then
+    # Fallback: try reading tunnel UUID from credentials file directly
+    TUNNEL_ID=$(ls "$HOME/.cloudflared/"*.json 2>/dev/null \
+      | xargs -I{} python -c "import json,sys; d=json.load(open('{}'));print(d.get('TunnelID',''))" 2>/dev/null \
+      | head -1 || true)
+  fi
+
+  [[ -z "${TUNNEL_ID:-}" ]] && die "Could not retrieve tunnel ID for '${TUNNEL_NAME}'. Run manually: cloudflared tunnel list"
   ok "Tunnel ID: $TUNNEL_ID"
+
+  # Verify credentials file exists — cloudflared tunnel create should have made it
+  CF_CREDS="$HOME/.cloudflared/${TUNNEL_ID}.json"
+  if [[ ! -f "$CF_CREDS" ]]; then
+    warn "Credentials file not found at $CF_CREDS"
+    warn "Re-run cloudflared tunnel login and tunnel create if this step fails"
+  else
+    ok "Credentials file: $CF_CREDS"
+  fi
 
   # Write cloudflared config
   mkdir -p "$HOME/.cloudflared"
@@ -581,9 +623,7 @@ StartLimitBurst=5
 [Service]
 Type=simple
 User=${USER}
-ExecStart=${CF_BIN} tunnel \
-    --config ${HOME}/.cloudflared/config.yml \
-    run ${TUNNEL_NAME}
+ExecStart=${CF_BIN} tunnel --config ${HOME}/.cloudflared/config.yml run ${TUNNEL_NAME}
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
@@ -605,7 +645,7 @@ UNIT
     ok "Tunnel service running"
   else
     echo "  Tunnel service log (last 20 lines):"
-    journalctl -u pensieve-tunnel -n 20 --no-pager 2>/dev/null || true
+    sudo journalctl -u pensieve-tunnel -n 20 --no-pager 2>/dev/null || true
     die "Tunnel failed to start. Check log above and re-run."
   fi
 
@@ -670,9 +710,9 @@ if should_run 10; then
 
   # ── Twilio webhook auto-configure ────────────────────────
   info "Configuring Twilio webhook…"
-  _SID=$(sudo grep "^TWILIO_ACCOUNT_SID=" "$ENV_FILE" | cut -d= -f2)
-  _TOK=$(sudo grep "^TWILIO_AUTH_TOKEN=" "$ENV_FILE" | cut -d= -f2)
-  _NUM=$(sudo grep "^TWILIO_FROM_NUMBER=" "$ENV_FILE" | cut -d= -f2)
+  _SID=$(sudo grep "^TWILIO_ACCOUNT_SID=" "$ENV_FILE" | cut -d= -f2-)
+  _TOK=$(sudo grep "^TWILIO_AUTH_TOKEN=" "$ENV_FILE" | cut -d= -f2-)
+  _NUM=$(sudo grep "^TWILIO_FROM_NUMBER=" "$ENV_FILE" | cut -d= -f2-)
 
   _PNSID=$(curl -s --max-time 10 -u "${_SID}:${_TOK}" \
     "https://api.twilio.com/2010-04-01/Accounts/${_SID}/IncomingPhoneNumbers.json" \
@@ -759,10 +799,10 @@ echo ""
 echo -e "  ${CYN}If anything is wrong${NC}"
 echo "    journalctl -fu pensieve-flask"
 echo "    sudo cat /etc/pensieve.env"
-echo "    systemctl restart pensieve-flask pensieve-tunnel"
+echo "    sudo systemctl restart pensieve-flask pensieve-tunnel"
 echo ""
 echo -e "  ${CYN}Migrate existing vault tickets to SQLite (one-time)${NC}"
 echo "    cd ~/pensieve-sms"
-echo "    VAULT_ROOT=\$(grep VAULT_ROOT /etc/pensieve.env | cut -d= -f2) \\"
-echo "      .venv/bin/python -m app.migrate"
+echo '    VAULT_ROOT=$(sudo grep "^VAULT_ROOT=" /etc/pensieve.env | cut -d= -f2-) \'
+echo '      .venv/bin/python -m app.migrate'
 echo ""
