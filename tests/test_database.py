@@ -274,3 +274,72 @@ def test_get_audit_log_filtered_by_ticket(vault):
     db.create_ticket("TKT-AF2", "Task 2", "work", "normal")
     logs = db.get_audit_log("TKT-AF1")
     assert all(l["ticket_id"] == "TKT-AF1" for l in logs)
+
+
+# ── get_ticket ────────────────────────────────────────────────────────────────
+
+def test_get_ticket_returns_dict(vault):
+    db.create_ticket("TKT-GT1", "Get this", "work", "normal", 20)
+    t = db.get_ticket("TKT-GT1")
+    assert t is not None
+    assert t["title"] == "Get this"
+    assert t["domain"] == "work"
+
+
+def test_get_ticket_none_for_missing(vault):
+    assert db.get_ticket("TKT-DOES-NOT-EXIST") is None
+
+
+def test_get_ticket_contains_status(vault):
+    db.create_ticket("TKT-GT2", "Status check", "hobby", "high", 15)
+    t = db.get_ticket("TKT-GT2")
+    assert t["status"] == "queued"
+
+
+# ── list_recent ───────────────────────────────────────────────────────────────
+
+def test_list_recent_empty(vault):
+    assert db.list_recent() == []
+
+
+def test_list_recent_returns_all(vault):
+    db.create_ticket("TKT-LR1", "First", "work", "normal")
+    db.create_ticket("TKT-LR2", "Second", "hobby", "high")
+    recent = db.list_recent()
+    assert len(recent) == 2
+
+
+def test_list_recent_ordered_newest_first(vault):
+    import time
+    db.create_ticket("TKT-LR3", "Older", "work", "normal")
+    time.sleep(0.01)
+    db.create_ticket("TKT-LR4", "Newer", "hobby", "normal")
+    recent = db.list_recent()
+    assert recent[0]["id"] == "TKT-LR4"
+
+
+def test_list_recent_respects_limit(vault):
+    for i in range(10):
+        db.create_ticket(f"TKT-LR{i+10}", f"Task {i}", "work", "normal")
+    assert len(db.list_recent(limit=5)) == 5
+
+
+# ── backup_db ─────────────────────────────────────────────────────────────────
+
+def test_backup_db_creates_file(vault, tmp_path):
+    db.create_ticket("TKT-BK1", "Backup me", "work", "normal")
+    dest = tmp_path / "backups" / "pensieve.db.bak"
+    db.backup_db(dest)
+    assert dest.exists()
+    assert dest.stat().st_size > 0
+
+
+def test_backup_db_contains_data(vault, tmp_path):
+    import sqlite3
+    db.create_ticket("TKT-BK2", "Preserved in backup", "property", "normal")
+    dest = tmp_path / "pensieve.bak"
+    db.backup_db(dest)
+    with sqlite3.connect(str(dest)) as bk:
+        row = bk.execute("SELECT title FROM tickets WHERE id='TKT-BK2'").fetchone()
+    assert row is not None
+    assert row[0] == "Preserved in backup"

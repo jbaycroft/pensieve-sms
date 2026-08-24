@@ -413,3 +413,28 @@ def test_sw_js_returns_200(client):
 def test_sw_js_is_javascript(client):
     r = client.get("/sw.js")
     assert b"self.addEventListener" in r.data or b"caches" in r.data
+
+
+# -- input validation -----------------------------------------------------------
+
+def test_add_task_body_over_500_returns_400(client):
+    r = client.post('/api/task', json={'body': 'b' * 501})
+    assert r.status_code == 400
+    assert b'exceeds' in r.data
+
+
+def test_quick_action_invalid_action_id_returns_400(client):
+    r = client.post('/api/quick-action', json={'action_id': '../../../etc/passwd', 'user': 'John'})
+    assert r.status_code == 400
+    assert b'invalid action_id' in r.data
+
+
+def test_quick_action_invalid_user_returns_400(client):
+    r = client.post('/api/quick-action', json={'action_id': 'coffee', 'user': '<script>alert(1)</script>'})
+    assert r.status_code == 400
+    assert b'invalid user' in r.data
+
+
+def test_quick_action_empty_action_id_returns_400(client):
+    r = client.post('/api/quick-action', json={'action_id': '', 'user': 'John'})
+    assert r.status_code == 400

@@ -6,18 +6,22 @@ DB file: VAULT_ROOT/.pensieve-app/pensieve.db
 
 Public API
 ----------
-init_db()                                   create schema, safe to call repeatedly
+init_db()                                   create schema, integrity check, safe to call repeatedly
 get_conn() -> Connection                    thread-local connection
-close_conn()                                close thread-local connection (test teardown)
+close_conn()                                close + PRAGMA optimize (test teardown / thread shutdown)
 
 create_ticket(id, title, domain, priority, est_min, source, tags)
 enqueue_ticket(ticket_id, priority)         insert into queue at priority position
 get_queue(limit) -> list[dict]              ordered queue
+get_ticket(ticket_id) -> dict | None        single ticket by id
+list_recent(limit) -> list[dict]            most recently created tickets
 close_ticket(ticket_id, actor)              mark done, remove from queue
 get_audit_log(ticket_id, limit) -> list
 
 get_prefs(user, action) -> dict
 save_prefs(user, action, prefs)
+
+backup_db(dest_path)                        online sqlite3 backup API
 """
 
 import json
@@ -116,10 +120,11 @@ def get_conn() -> sqlite3.Connection:
 
 
 def close_conn() -> None:
-    """Close thread-local connection. Call in test teardown or thread shutdown."""
+    """Close thread-local connection, running PRAGMA optimize first."""
     conn = getattr(_local, "conn", None)
     if conn:
         try:
+            conn.execute("PRAGMA optimize")  # updates query planner statistics
             conn.close()
         except Exception:
             pass
@@ -127,11 +132,18 @@ def close_conn() -> None:
 
 
 def init_db() -> None:
-    """Create schema if not exists. Idempotent — safe to call on every startup."""
+    """Create schema if not exists. Runs integrity_check. Idempotent."""
     conn = get_conn()
     conn.executescript(_SCHEMA)
     conn.commit()
-    log.info("DB ready: %s", _db_path())
+
+    # Integrity check on every startup — warns but does not abort
+    result = conn.execute("PRAGMA integrity_check").fetchone()
+    status = result[0] if result else "unknown"
+    if status != "ok":
+        log.error("DB integrity_check: %s — consider restoring from backup", status)
+    else:
+        log.info("DB ready (integrity ok): %s", _db_path())
 
 
 # ── tickets ───────────────────────────────────────────────────────────────────
@@ -283,7 +295,7 @@ def _audit(
     )
 
 
-def get_audit_log(ticket_id: str = None, limit: int = 50) -> list[dict]:
+def get_audit_log(ticket_id: Optional[str] = None, limit: int = 50) -> list[dict]:
     conn = get_conn()
     if ticket_id:
         rows = conn.execute(
@@ -295,3 +307,36 @@ def get_audit_log(ticket_id: str = None, limit: int = 50) -> list[dict]:
             "SELECT * FROM audit_log ORDER BY ts DESC LIMIT ?", (limit,)
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+# ── read helpers ──────────────────────────────────────────────────────────────
+
+def get_ticket(ticket_id: str) -> Optional[dict]:
+    """Return a single ticket by id, or None if not found."""
+    row = get_conn().execute(
+        "SELECT * FROM tickets WHERE id=?", (ticket_id,)
+    ).fetchone()
+    return dict(row) if row else None
+
+
+def list_recent(limit: int = 50) -> list[dict]:
+    """Return the most recently created tickets regardless of queue status."""
+    rows = get_conn().execute(
+        "SELECT * FROM tickets ORDER BY created_at DESC LIMIT ?", (limit,)
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+# ── backup ────────────────────────────────────────────────────────────────────
+
+def backup_db(dest_path: pathlib.Path) -> None:
+    """
+    Online hot backup using sqlite3's built-in backup API.
+    Safe to call while the DB is in use — no locks held on caller thread.
+    """
+    dest_path = pathlib.Path(dest_path)
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    src = get_conn()
+    with sqlite3.connect(str(dest_path)) as dst:
+        src.backup(dst, pages=100)
+    log.info("DB backed up → %s", dest_path)

@@ -490,20 +490,68 @@ RestartSec=5
 StandardOutput=journal
 StandardError=journal
 
+# ── security hardening ────────────────────────────────
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+RestrictNamespaces=yes
+RestrictRealtime=yes
+ProtectClock=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+LimitNOFILE=4096
+# Allow writes to vault dir and repo dir only
+ReadWritePaths=${VAULT} ${REPO_DIR}
+
 [Install]
 WantedBy=multi-user.target
+UNIT
+
+  # ── backup timer ─────────────────────────────────────
+  # Backs up pensieve.db daily at 03:00, keeps 7 copies
+  sudo tee /etc/systemd/system/pensieve-backup.service > /dev/null <<UNIT
+[Unit]
+Description=The Burrow — Daily DB backup
+After=pensieve-flask.service
+
+[Service]
+Type=oneshot
+User=${USER}
+ExecStart=${REPO_DIR}/deploy/backup.sh
+StandardOutput=journal
+StandardError=journal
+UNIT
+
+  sudo tee /etc/systemd/system/pensieve-backup.timer > /dev/null <<UNIT
+[Unit]
+Description=The Burrow — Daily backup timer
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+RandomizedDelaySec=300
+Persistent=true
+
+[Install]
+WantedBy=timers.target
 UNIT
 
   sudo systemctl daemon-reload
   sudo systemctl enable pensieve-flask
   sudo systemctl restart pensieve-flask
+  sudo systemctl enable pensieve-backup.timer
+  sudo systemctl start pensieve-backup.timer
   ok "Flask service installed and started"
+  ok "Daily backup timer enabled (03:00)"
 
   # Health check with 10-attempt retry
   info "Waiting for Flask to respond…"
   FLASK_UP=0
-  for i in $(seq 1 10); do
-    HTTP=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://127.0.0.1:5005/ 2>/dev/null)
+  for i in $(seq 1 15); do
+    HTTP=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://127.0.0.1:5005/health 2>/dev/null)
     if [[ "$HTTP" == "200" ]]; then
       FLASK_UP=1
       break
@@ -512,14 +560,17 @@ UNIT
   done
 
   if [[ $FLASK_UP -eq 1 ]]; then
-    ok "Flask responding on 127.0.0.1:5005 (HTTP 200)"
+    # Fetch and display health status
+    HEALTH_JSON=$(curl -s --max-time 3 http://127.0.0.1:5005/health 2>/dev/null || echo "{}")
+    DB_OK=$(echo "$HEALTH_JSON" | python -c "import sys,json; d=json.load(sys.stdin); print(d.get('db_ok','?'))" 2>/dev/null)
+    VAULT_OK=$(echo "$HEALTH_JSON" | python -c "import sys,json; d=json.load(sys.stdin); print(d.get('vault_ok','?'))" 2>/dev/null)
+    ok "Flask healthy: db_ok=${DB_OK}  vault_ok=${VAULT_OK}"
   else
-    # Show last log lines to help diagnose
     echo ""
     echo "  Flask service log (last 20 lines):"
     sudo journalctl -u pensieve-flask -n 20 --no-pager 2>/dev/null || true
     echo ""
-    die "Flask not responding on port 5005. Fix the issue and re-run."
+    die "Flask /health not responding on port 5005. Fix the issue and re-run."
   fi
 
   step_done 8

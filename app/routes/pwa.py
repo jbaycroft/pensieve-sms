@@ -3,15 +3,18 @@ import re
 import logging
 from flask import Blueprint, render_template, request, jsonify, current_app
 
-from ..parser import parse, ParseResult
+from ..parser import parse
 from ..enhancer import enhance, infer_domain
-from ..vault import write_ticket, write_index, vault_root
+from ..vault import write_ticket, write_index
 from ..ack import random_ack
 from ..preferences import get_prefs, save_prefs
 from ..quick_actions import get_actions
 
 log = logging.getLogger(__name__)
 pwa_bp = Blueprint("pwa", __name__)
+
+_MAX_BODY_LEN = 500
+_SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -23,10 +26,24 @@ def _queue_tickets(limit: int = 20) -> list[dict]:
 
 
 def _write(title: str, domain: str, priority: str, est_min: int = 30) -> tuple[str, str]:
-    """write ticket + index, return (ticket_id, ack)."""
+    """Write ticket + queue entry, return (ticket_id, ack)."""
     tid = write_ticket(title, domain, priority, est_min)
     write_index(tid, priority)
     return tid, random_ack()
+
+
+def _parse_and_write(body: str, priority_override: str = "") -> dict:
+    """Full parse → enhance → write pipeline. Returns jsonify-ready dict.
+
+    priority_override: if non-empty, overrides the parsed priority prefix.
+    Otherwise the prefix in the body text controls priority (!! → urgent, ! → high).
+    """
+    parsed   = parse(body)
+    enhanced = enhance(parsed.raw_text, parsed.domain)
+    domain   = parsed.domain or infer_domain(enhanced)
+    priority = priority_override if priority_override else parsed.priority
+    tid, ack = _write(enhanced, domain, priority, parsed.est_min)
+    return {"ack": ack, "ticket_id": tid, "enhanced": enhanced}
 
 
 # ── pages ─────────────────────────────────────────────────────────────────────
@@ -64,16 +81,14 @@ def add_task():
     data   = request.get_json(force=True) or {}
     body   = data.get("body", "").strip()
     if not body:
-        return ({"error": "body required"}, 400)
+        return jsonify({"error": "body required"}), 400
+    if len(body) > _MAX_BODY_LEN:
+        return jsonify({"error": f"body exceeds {_MAX_BODY_LEN} character limit"}), 400
     try:
-        parsed   = parse(body)
-        enhanced = enhance(parsed.raw_text, parsed.domain)
-        domain   = parsed.domain or infer_domain(enhanced)
-        tid, ack = _write(enhanced, domain, parsed.priority, parsed.est_min)
-        return jsonify({"ack": ack, "ticket_id": tid, "enhanced": enhanced})
+        return jsonify(_parse_and_write(body))
     except Exception as e:
         log.error("add_task: %s", e, exc_info=True)
-        return ({"error": str(e)}, 500)
+        return jsonify({"error": str(e)}), 500
 
 
 @pwa_bp.route("/api/quick-action", methods=["POST"])
@@ -83,10 +98,16 @@ def quick_action():
     user      = data.get("user", "John")
     priority  = data.get("priority", "normal")
 
+    # Input validation
+    if not _SAFE_ID.match(action_id):
+        return jsonify({"error": "invalid action_id"}), 400
+    if not _SAFE_ID.match(user):
+        return jsonify({"error": "invalid user"}), 400
+
     actions = get_actions()
     action  = next((a for a in actions if a["id"] == action_id), None)
     if not action:
-        return ({"error": "unknown action"}, 400)
+        return jsonify({"error": "unknown action"}), 400
 
     try:
         if action["type"] == "coffee":
@@ -106,19 +127,18 @@ def quick_action():
             tid, ack = _write(title, domain, priority, est_min)
             return jsonify({"ack": ack, "ticket_id": tid, "enhanced": title})
 
-        # freeform
+        # freeform — use shared _parse_and_write helper
         body = data.get("body", "").strip()
         if not body:
-            return ({"error": "body required"}, 400)
-        parsed   = parse(body)
-        enhanced = enhance(parsed.raw_text, parsed.domain)
-        domain   = parsed.domain or (action.get("domain")) or infer_domain(enhanced)
-        tid, ack = _write(enhanced, domain, priority, parsed.est_min)
-        return jsonify({"ack": ack, "ticket_id": tid, "enhanced": enhanced})
+            return jsonify({"error": "body required"}), 400
+        if len(body) > _MAX_BODY_LEN:
+            return jsonify({"error": f"body exceeds {_MAX_BODY_LEN} character limit"}), 400
+        result = _parse_and_write(body, priority_override=priority)
+        return jsonify(result)
 
     except Exception as e:
         log.error("quick_action: %s", e, exc_info=True)
-        return ({"error": str(e)}, 500)
+        return jsonify({"error": str(e)}), 500
 
 
 @pwa_bp.route("/api/preferences/<user>/<action>", methods=["GET"])

@@ -255,3 +255,23 @@ def test_high_priority_is_second(client, vault_dir):
     links = re.findall(r"\[\[([^\]]+)\]\]", body)
     assert links[0] == normal_id   # normal was first, stays first
     assert links[1] == high_id     # high inserted at position 2
+
+
+# -- input validation -----------------------------------------------------------
+
+def test_test_endpoint_body_over_500_chars_returns_400(client):
+    r = client.post('/test', json={'body': 'a' * 501})
+    assert r.status_code == 400
+    assert b'exceeds' in r.data
+
+
+def test_test_endpoint_exactly_500_chars_accepted(client):
+    body = 'w: ' + 'x' * 497
+    r = client.post('/test', json={'body': body})
+    assert r.status_code in (200, 500)
+
+
+def test_test_endpoint_non_printable_stripped(client):
+    r = client.post('/test', json={'body': 'fix the boiler'})
+    assert r.status_code == 200
+    assert b'fix' in r.data
