@@ -20,13 +20,18 @@ os.environ["JEANNIE_NUMBER"]  = JEANNIE_NUMBER
 os.environ["TWILIO_AUTH_TOKEN"] = "fake_token_for_tests"
 
 import app.vault as vault_mod
+import app.database as db_mod
 
 
 @pytest.fixture(autouse=True)
 def reset():
     vault_mod._VAULT_ROOT = None
+    db_mod._DB_PATH = None
+    db_mod.close_conn()
     yield
     vault_mod._VAULT_ROOT = None
+    db_mod._DB_PATH = None
+    db_mod.close_conn()
 
 
 @pytest.fixture

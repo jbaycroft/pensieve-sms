@@ -1,12 +1,17 @@
 import pytest
 import app.vault as vault_mod
+import app.database as db_mod
 
 
 @pytest.fixture(autouse=True)
 def reset_vault_root():
     vault_mod._VAULT_ROOT = None
+    db_mod._DB_PATH = None
+    db_mod.close_conn()
     yield
     vault_mod._VAULT_ROOT = None
+    db_mod._DB_PATH = None
+    db_mod.close_conn()
 
 
 @pytest.fixture
@@ -19,6 +24,10 @@ def fake_vault(tmp_path, monkeypatch):
         encoding="utf-8",
     )
     monkeypatch.setenv("VAULT_ROOT", str(tmp_path))
+    # Seed DB so queue ordering tests work with pre-existing ticket
+    db_mod.init_db()
+    db_mod.create_ticket("TKT-EXISTING", "Existing task", "work", "normal")
+    db_mod.enqueue_ticket("TKT-EXISTING", "normal")
     return tmp_path
 
 

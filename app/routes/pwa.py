@@ -17,35 +17,9 @@ pwa_bp = Blueprint("pwa", __name__)
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 def _queue_tickets(limit: int = 20) -> list[dict]:
-    index_path = vault_root() / "00_Queue" / "Index.md"
-    if not index_path.exists():
-        return []
-    content = index_path.read_text(encoding="utf-8")
-    body = re.sub(r"^---[\s\S]*?---\n?", "", content)
-    body = re.sub(r"%%[\s\S]*?%%\n?", "", body)
-    links = re.findall(r"\[\[([^\]]+)\]\]", body)
-    ticket_dir = vault_root() / "00_Queue" / "Tickets"
-    tickets = []
-    for link in links[:limit]:
-        tp = ticket_dir / f"{link}.md"
-        if not tp.exists():
-            continue
-        meta = {}
-        fm = re.match(r"^---\n([\s\S]*?)\n---", tp.read_text(encoding="utf-8"))
-        if fm:
-            for line in fm.group(1).splitlines():
-                if ": " in line:
-                    k, v = line.split(": ", 1)
-                    meta[k.strip()] = v.strip()
-        tickets.append({
-            "id":       link,
-            "title":    meta.get("title", link),
-            "domain":   meta.get("domain", ""),
-            "priority": meta.get("priority", "normal"),
-            "est_min":  meta.get("est_min", "30"),
-            "status":   meta.get("status", "queued"),
-        })
-    return tickets
+    """Return ordered queue from SQLite. Fast O(1) join, no file I/O."""
+    from ..database import get_queue
+    return get_queue(limit)
 
 
 def _write(title: str, domain: str, priority: str, est_min: int = 30) -> tuple[str, str]:

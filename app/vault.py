@@ -1,6 +1,14 @@
 """
 vault.py - Pensieve vault writer. Cross-platform via pathlib.
 
+Data model
+----------
+Primary store: SQLite database (app/database.py)
+Display layer: Obsidian .md files (written as a side effect on every change)
+
+The Obsidian vault is the *view*. The database is the *truth*.
+Scripts and Obsidian scripts may still read .md files — they are kept in sync.
+
 VAULT_ROOT env var:
   Windows dev:  c:\\vaults\\Pensieve
   Arch deploy:  /home/john/vault/Pensieve
@@ -29,12 +37,89 @@ def vault_root() -> pathlib.Path:
     return _VAULT_ROOT
 
 
+# ── public API ────────────────────────────────────────────────────────────────
+
 def write_ticket(title: str, domain: str, priority: str, est_min: int = 30) -> str:
-    """Create ticket file. Returns ticket ID."""
-    now       = datetime.datetime.now()
+    """
+    Create a new ticket.
+
+    1. Writes to SQLite (primary — source of truth)
+    2. Writes .md file to vault (display layer for Obsidian)
+
+    Returns ticket_id.
+    """
+    from . import database
+
+    now = datetime.datetime.now()
     ticket_id = "TKT-" + now.strftime("%Y%m%d%H%M")
-    date_str  = now.strftime("%Y-%m-%d")
-    prio      = PRIORITY_MAP.get(priority, "normal")
+
+    # 1. Primary: SQLite
+    database.create_ticket(ticket_id, title, domain, priority, est_min)
+
+    # 2. Side effect: .md file for Obsidian
+    _write_ticket_md(ticket_id, title, domain, priority, est_min, now)
+
+    log.info("Wrote ticket %s", ticket_id)
+    return ticket_id
+
+
+def write_index(ticket_id: str, priority: str) -> None:
+    """
+    Insert ticket into the queue.
+
+    1. Updates queue_order in SQLite (primary)
+    2. Updates Index.md in vault (display layer for Obsidian)
+
+    Priority rules:
+      urgent → position 1 (new HEAD)
+      high   → position 2 (after current HEAD)
+      normal → tail (FIFO)
+    """
+    from . import database
+
+    # 1. Primary: SQLite queue
+    database.enqueue_ticket(ticket_id, priority)
+
+    # 2. Side effect: update Index.md
+    _update_index_md(ticket_id, priority)
+
+    log.info("Queued %s (%s)", ticket_id, priority)
+
+
+def close_ticket(ticket_id: str, actor: str = "system") -> None:
+    """
+    Mark a ticket done.
+
+    1. Updates SQLite status + removes from queue_order
+    2. Updates .md file status field and Index.md
+    """
+    from . import database
+
+    # 1. Primary: SQLite
+    database.close_ticket(ticket_id, actor=actor)
+
+    # 2. Side effect: update ticket .md
+    _close_ticket_md(ticket_id)
+
+    # 3. Side effect: remove pointer from Index.md
+    _remove_from_index_md(ticket_id)
+
+    log.info("Closed ticket %s (actor=%s)", ticket_id, actor)
+
+
+# ── markdown side effects ─────────────────────────────────────────────────────
+
+def _write_ticket_md(
+    ticket_id: str,
+    title: str,
+    domain: str,
+    priority: str,
+    est_min: int,
+    now: datetime.datetime,
+) -> None:
+    """Write the Obsidian-facing .md file for a new ticket."""
+    date_str = now.strftime("%Y-%m-%d")
+    prio_display = PRIORITY_MAP.get(priority, "normal")
 
     ticket_dir = vault_root() / "00_Queue" / "Tickets"
     ticket_dir.mkdir(parents=True, exist_ok=True)
@@ -44,7 +129,7 @@ def write_ticket(title: str, domain: str, priority: str, est_min: int = 30) -> s
         f"id: {ticket_id}",
         f"title: {title}",
         f"domain: {domain}",
-        f"priority: {prio}",
+        f"priority: {prio_display}",
         "status: queued",
         f"created: {date_str}",
         "energy: medium",
@@ -58,19 +143,11 @@ def write_ticket(title: str, domain: str, priority: str, est_min: int = 30) -> s
         "",
     ])
 
-    ticket_path = ticket_dir / f"{ticket_id}.md"
-    ticket_path.write_text(body, encoding="utf-8")
-    log.info("Wrote ticket %s", ticket_id)
-    return ticket_id
+    (ticket_dir / f"{ticket_id}.md").write_text(body, encoding="utf-8")
 
 
-def write_index(ticket_id: str, priority: str) -> None:
-    """
-    Insert [[ticket_id]] pointer into Index.md.
-      urgent -> prepend after %% comment block (becomes HEAD)
-      high   -> insert after first existing link (position 2)
-      normal -> append to FIFO tail
-    """
+def _update_index_md(ticket_id: str, priority: str) -> None:
+    """Insert [[ticket_id]] into Index.md using the same priority insertion rules."""
     index_path = vault_root() / "00_Queue" / "Index.md"
     if not index_path.exists():
         raise FileNotFoundError(f"Index.md not found at {index_path}")
@@ -92,4 +169,33 @@ def write_index(ticket_id: str, priority: str) -> None:
         content += pointer
 
     index_path.write_text(content, encoding="utf-8")
-    log.info("Updated Index.md - %s (%s)", ticket_id, priority)
+
+
+def _close_ticket_md(ticket_id: str) -> None:
+    """Update status: queued → done in the ticket's .md file."""
+    today = datetime.date.today().isoformat()
+    ticket_path = vault_root() / "00_Queue" / "Tickets" / f"{ticket_id}.md"
+    if not ticket_path.exists():
+        return
+    text = ticket_path.read_text(encoding="utf-8")
+    text = re.sub(r"^status: \S+$", "status: done", text, flags=re.MULTILINE)
+    if "completed:" not in text:
+        text = re.sub(
+            r"^status: done$",
+            f"status: done\ncompleted: {today}",
+            text,
+            flags=re.MULTILINE,
+        )
+    ticket_path.write_text(text, encoding="utf-8")
+
+
+def _remove_from_index_md(ticket_id: str) -> None:
+    """Remove [[ticket_id]] pointer from Index.md."""
+    index_path = vault_root() / "00_Queue" / "Index.md"
+    if not index_path.exists():
+        return
+    content = index_path.read_text(encoding="utf-8")
+    content = content.replace(f"[[{ticket_id}]]\n", "")
+    content = content.replace(f"[[{ticket_id}]]", "")
+    index_path.write_text(content, encoding="utf-8")
+

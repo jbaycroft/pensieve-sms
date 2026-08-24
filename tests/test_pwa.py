@@ -15,6 +15,7 @@ os.environ.setdefault("JEANNIE_NUMBER", "+15550009999")
 
 import app.vault as vault_mod
 import app.preferences as prefs_mod
+import app.database as db_mod
 
 
 # ── fixtures ──────────────────────────────────────────────────────────────────
@@ -23,9 +24,13 @@ import app.preferences as prefs_mod
 def reset_modules():
     vault_mod._VAULT_ROOT = None
     prefs_mod._APP_DIR = None
+    db_mod._DB_PATH = None
+    db_mod.close_conn()
     yield
     vault_mod._VAULT_ROOT = None
     prefs_mod._APP_DIR = None
+    db_mod._DB_PATH = None
+    db_mod.close_conn()
 
 
 @pytest.fixture
@@ -38,7 +43,7 @@ def vault_dir(tmp_path):
         "%%\nHEAD: first [[TKT-*]]\n%%\n\n[[TKT-EXISTING]]\n",
         encoding="utf-8",
     )
-    # Write a fake existing ticket so queue view works
+    # Write a fake existing ticket .md (Obsidian display layer)
     (tickets / "TKT-EXISTING.md").write_text(
         "---\nid: TKT-EXISTING\ntitle: Existing task\ndomain: work\n"
         "priority: normal\nstatus: queued\ncreated: 2026-08-23\n"
@@ -56,6 +61,9 @@ def client(vault_dir, monkeypatch):
     from app import create_app
     app = create_app()
     app.config["TESTING"] = True
+    # Seed DB with the existing ticket from vault_dir fixture
+    db_mod.create_ticket("TKT-EXISTING", "Existing task", "work", "normal")
+    db_mod.enqueue_ticket("TKT-EXISTING", "normal")
     with app.test_client() as c:
         yield c
 
@@ -114,11 +122,9 @@ def test_queue_shows_head_badge_on_first(client):
     assert b"HEAD" in r.data
 
 
-def test_queue_empty_when_no_tickets(client, vault_dir):
-    # Overwrite Index.md with empty queue
-    (vault_dir / "00_Queue" / "Index.md").write_text(
-        "---\ntitle: Queue\n---\n%%\nFIFO\n%%\n\n", encoding="utf-8"
-    )
+def test_queue_empty_when_no_tickets(client):
+    # Close the pre-seeded ticket so the DB queue is empty
+    db_mod.close_ticket("TKT-EXISTING")
     r = client.get("/api/queue")
     assert r.status_code == 200
     assert b"Queue is empty" in r.data

@@ -1,24 +1,29 @@
 """
 tests/test_preferences.py — coverage for app.preferences
 """
-import json
 import pytest
 import app.vault as vault_mod
 import app.preferences as prefs_mod
+import app.database as db_mod
 
 
 @pytest.fixture(autouse=True)
 def reset():
     vault_mod._VAULT_ROOT = None
     prefs_mod._APP_DIR = None
+    db_mod._DB_PATH = None
+    db_mod.close_conn()
     yield
     vault_mod._VAULT_ROOT = None
     prefs_mod._APP_DIR = None
+    db_mod._DB_PATH = None
+    db_mod.close_conn()
 
 
 @pytest.fixture
 def vault(tmp_path, monkeypatch):
     monkeypatch.setenv("VAULT_ROOT", str(tmp_path))
+    db_mod.init_db()
     return tmp_path
 
 
@@ -88,25 +93,25 @@ def test_multiple_users_multiple_actions(vault):
     assert get_prefs("Jeannie", "grocery") == {}
 
 
-# ── file persistence ──────────────────────────────────────────────────────────
+# ── persistence (SQLite) ──────────────────────────────────────────────────────
 
-def test_prefs_persisted_to_json_file(vault):
-    from app.preferences import save_prefs
+def test_prefs_persisted_to_db(vault):
+    """Preferences survive between get_prefs calls (not in memory, in SQLite)."""
+    from app.preferences import get_prefs, save_prefs
     save_prefs("John", "coffee", {"size": "medium", "drink": "latte"})
-    prefs_file = vault / ".pensieve-app" / "preferences.json"
-    assert prefs_file.exists()
-    data = json.loads(prefs_file.read_text())
-    assert data["coffee"]["John"]["size"] == "medium"
-    assert data["coffee"]["John"]["drink"] == "latte"
+    # Verify directly in DB
+    import app.database as db
+    result = db.get_prefs("John", "coffee")
+    assert result["size"] == "medium"
+    assert result["drink"] == "latte"
 
 
-def test_app_dir_created_automatically(vault):
+def test_db_dir_created_automatically(vault):
+    """SQLite DB file is created under .pensieve-app/ on first use."""
     from app.preferences import save_prefs
-    app_dir = vault / ".pensieve-app"
-    assert not app_dir.exists()
     save_prefs("John", "coffee", {"size": "large"})
-    assert app_dir.exists()
-    assert (app_dir / "preferences.json").exists()
+    db_file = vault / ".pensieve-app" / "pensieve.db"
+    assert db_file.exists()
 
 
 def test_existing_file_preserved_on_update(vault):
