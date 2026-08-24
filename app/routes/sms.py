@@ -75,7 +75,7 @@ def sms_ingest():
 def test_ingest():
     """
     Dev-only. POST JSON: {"body": "h: check pH", "from": "+15550001234"}
-    No Twilio auth required. Disable in prod: TEST_ENDPOINT_ENABLED=0
+    No Twilio auth required. Always returns JSON. Disable in prod: TEST_ENDPOINT_ENABLED=0
     """
     if os.environ.get("TEST_ENDPOINT_ENABLED", "1") == "0":
         return ({"error": "disabled"}, 403)
@@ -87,13 +87,12 @@ def test_ingest():
     if not body:
         return ({"error": "body required"}, 400)
 
-    if JEANNIE_NUMBER and from_num == JEANNIE_NUMBER:
-        from .jeannie import jeannie_ingest
-        return jeannie_ingest(body)
-
+    # For /test, always process via _process() and return JSON (never TwiML).
+    # Jeannie gets the same dev-friendly response as everyone else here.
     try:
         enhanced, tid = _process(body)
         return jsonify({"ack": random_ack(), "enhanced": enhanced, "ticket_id": tid})
     except Exception as e:
         log.error("test_ingest error: %s", e, exc_info=True)
         return ({"error": str(e)}, 500)
+
