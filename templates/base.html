@@ -30,11 +30,11 @@
       --border-dark: #5c3d11;
       --border-mid:  #8b6020;
       --border-gold: #c49a2f;
-      /* Text — all pass WCAG AA (≥4.5:1) on --wood-dark (#1e1208) */
-      --parchment:   #f0ddb0;   /* ~12:1 */
-      --parchment-dk:#cca870;   /* ~7.4:1 */
-      --text-muted:  #c4a070;   /* ~6.1:1 — was #a08858 (failed) */
-      --text-dim:    #9a7a50;   /* ~4.6:1 — was #706040 (failed) */
+      /* Text — all pass WCAG AA on dark backgrounds */
+      --parchment:   #f0ddb0;
+      --parchment-dk:#cca870;
+      --text-muted:  #c4a070;
+      --text-dim:    #9a7a50;
       --green-bright:#7ec850;
       --green-mid:   #4a8a28;
       --green-dark:  #2d5516;
@@ -42,8 +42,6 @@
       --amber-dark:  #b07820;
       --red-warm:    #c43828;
     }
-
-    /* NOTE: image-rendering removed from html — it corrupted text rendering */
 
     body {
       font-family: 'Inter', sans-serif;
@@ -56,9 +54,7 @@
 
     /* ── Night sky ── */
     .night-sky {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
+      position: fixed; inset: 0; z-index: 0;
       background:
         radial-gradient(ellipse at 20% 10%, rgba(30,60,20,0.25) 0%, transparent 50%),
         radial-gradient(ellipse at 80% 80%, rgba(20,30,60,0.2) 0%, transparent 50%),
@@ -68,9 +64,7 @@
     /* ── Stars ── */
     .stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
     .star {
-      position: absolute;
-      background: #fff;
-      border-radius: 50%;
+      position: absolute; background: #fff; border-radius: 50%;
       animation: twinkle var(--dur, 3s) ease-in-out infinite var(--delay, 0s);
     }
     @keyframes twinkle {
@@ -78,17 +72,15 @@
       50%      { opacity: var(--max-op, 0.9); transform: scale(1.3); }
     }
 
-    /* ── Landscape layer ── */
+    /* ── Landscape layer (trees + barn) ── */
     .landscape-layer {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
-      z-index: 0;
-      pointer-events: none;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      z-index: 0; pointer-events: none;
     }
 
     .content-layer { position: relative; z-index: 1; }
 
-    /* ── Pixel panel (Stardew-style raised wooden frame) ── */
+    /* ── Pixel panel ── */
     .pixel-panel {
       background: var(--wood-mid);
       border: 3px solid var(--border-dark);
@@ -101,12 +93,9 @@
       position: relative;
     }
     .pixel-panel::before {
-      content: '';
-      position: absolute;
-      inset: 2px;
+      content: ''; position: absolute; inset: 2px;
       border: 1px solid rgba(196,154,47,0.15);
-      border-radius: 2px;
-      pointer-events: none;
+      border-radius: 2px; pointer-events: none;
     }
     .pixel-panel-sm {
       background: var(--wood-dark);
@@ -134,7 +123,7 @@
       transition: all 0.1s;
       cursor: pointer;
       position: relative;
-      min-height: 72px;   /* ample touch target */
+      min-height: 72px;
     }
     .action-btn:hover {
       background: var(--wood-light);
@@ -191,7 +180,7 @@
         2px 2px 0 rgba(0,0,0,0.4);
     }
 
-    /* ── Input ── */
+    /* ── Form inputs ── */
     .burrow-input {
       background: var(--wood-dark);
       border: 2px solid var(--border-dark);
@@ -261,10 +250,6 @@
     .btn-primary:hover {
       background: var(--green-mid);
       border-color: var(--green-bright);
-      box-shadow:
-        inset 1px 1px 0 rgba(126,200,80,0.5),
-        inset -1px -1px 0 #1a3a0a,
-        2px 3px 0 rgba(0,0,0,0.4);
       transform: translateY(-1px);
     }
     .btn-primary:active {
@@ -356,7 +341,7 @@
       border-radius: 4px;
     }
 
-    /* ── Logout / minor buttons ── */
+    /* ── Ghost / minor buttons ── */
     .btn-ghost {
       font-family: 'Inter', sans-serif;
       font-size: 0.75rem;
@@ -381,9 +366,7 @@
     /* ── Skeleton shimmer ── */
     .skeleton {
       background: linear-gradient(90deg,
-        var(--wood-dark) 25%,
-        #261810 50%,
-        var(--wood-dark) 75%);
+        var(--wood-dark) 25%, #261810 50%, var(--wood-dark) 75%);
       background-size: 200% 100%;
       animation: shimmer 1.5s infinite;
       border-radius: 2px;
@@ -395,7 +378,6 @@
 
     /* ── Safe area helpers ── */
     .pb-safe { padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
-    .pt-safe { padding-top: max(0.5rem, env(safe-area-inset-top)); }
 
     /* ── Scrollbar ── */
     ::-webkit-scrollbar { width: 6px; }
@@ -405,12 +387,10 @@
     /* ── Checkbox ── */
     input[type="checkbox"] {
       accent-color: var(--green-mid);
-      width: 18px;
-      height: 18px;
-      cursor: pointer;
+      width: 18px; height: 18px; cursor: pointer;
     }
 
-    /* ── Welcome screen layout ── */
+    /* ── Welcome screen ── */
     .welcome-screen {
       min-height: 100dvh;
       display: flex;
@@ -429,7 +409,6 @@
 
 <!-- Night sky gradient -->
 <div class="night-sky"></div>
-<!-- Twinkling stars -->
 <div class="stars" id="stars"></div>
 
 <!-- ── Pixel landscape: trees + barn silhouette ── -->
@@ -437,128 +416,83 @@
   <svg viewBox="0 0 1200 128" xmlns="http://www.w3.org/2000/svg"
        preserveAspectRatio="xMidYMax slice" width="100%" height="128"
        style="shape-rendering:crispEdges; display:block">
-
-    <!-- Ground strip -->
-    <rect x="0"    y="112" width="1200" height="16" fill="#060e04"/>
-
-    <!-- ── Tree 1: small, x≈70 ── -->
+    <rect x="0" y="112" width="1200" height="16" fill="#060e04"/>
+    <!-- Tree 1: small, x≈70 -->
     <g fill="#112409">
-      <rect x="62"  y="72"  width="16" height="8"/>
-      <rect x="54"  y="80"  width="32" height="8"/>
-      <rect x="46"  y="88"  width="48" height="8"/>
-      <rect x="54"  y="96"  width="32" height="8"/>
-      <rect x="46"  y="104" width="48" height="8"/>
-      <rect x="62"  y="104" width="16" height="8"/>   <!-- trunk -->
+      <rect x="62"  y="72"  width="16" height="8"/><rect x="54"  y="80"  width="32" height="8"/>
+      <rect x="46"  y="88"  width="48" height="8"/><rect x="54"  y="96"  width="32" height="8"/>
+      <rect x="46"  y="104" width="48" height="8"/><rect x="62"  y="104" width="16" height="8"/>
     </g>
-
-    <!-- ── Tree 2: tall, x≈200 ── -->
+    <!-- Tree 2: tall, x≈200 -->
     <g fill="#0d1f08">
-      <rect x="192" y="24"  width="16" height="8"/>
-      <rect x="184" y="32"  width="32" height="8"/>
-      <rect x="176" y="40"  width="48" height="8"/>
-      <rect x="184" y="48"  width="32" height="8"/>
-      <rect x="176" y="56"  width="48" height="8"/>
-      <rect x="184" y="64"  width="32" height="8"/>
-      <rect x="176" y="72"  width="48" height="8"/>
-      <rect x="184" y="80"  width="32" height="8"/>
-      <rect x="176" y="88"  width="48" height="8"/>
-      <rect x="184" y="96"  width="32" height="8"/>
-      <rect x="176" y="104" width="48" height="8"/>
-      <rect x="192" y="104" width="16" height="8"/>   <!-- trunk -->
+      <rect x="192" y="24"  width="16" height="8"/><rect x="184" y="32"  width="32" height="8"/>
+      <rect x="176" y="40"  width="48" height="8"/><rect x="184" y="48"  width="32" height="8"/>
+      <rect x="176" y="56"  width="48" height="8"/><rect x="184" y="64"  width="32" height="8"/>
+      <rect x="176" y="72"  width="48" height="8"/><rect x="184" y="80"  width="32" height="8"/>
+      <rect x="176" y="88"  width="48" height="8"/><rect x="184" y="96"  width="32" height="8"/>
+      <rect x="176" y="104" width="48" height="8"/><rect x="192" y="104" width="16" height="8"/>
     </g>
-
-    <!-- ── Tree 3: medium, x≈340 ── -->
+    <!-- Tree 3: medium, x≈340 -->
     <g fill="#112409">
-      <rect x="332" y="48"  width="16" height="8"/>
-      <rect x="324" y="56"  width="32" height="8"/>
-      <rect x="316" y="64"  width="48" height="8"/>
-      <rect x="324" y="72"  width="32" height="8"/>
-      <rect x="316" y="80"  width="48" height="8"/>
-      <rect x="324" y="88"  width="32" height="8"/>
-      <rect x="316" y="96"  width="48" height="8"/>
-      <rect x="332" y="104" width="16" height="8"/>
+      <rect x="332" y="48"  width="16" height="8"/><rect x="324" y="56"  width="32" height="8"/>
+      <rect x="316" y="64"  width="48" height="8"/><rect x="324" y="72"  width="32" height="8"/>
+      <rect x="316" y="80"  width="48" height="8"/><rect x="324" y="88"  width="32" height="8"/>
+      <rect x="316" y="96"  width="48" height="8"/><rect x="332" y="104" width="16" height="8"/>
     </g>
-
-    <!-- ── Barn, x≈480 ── -->
+    <!-- Barn, x≈480 -->
     <g>
-      <!-- roof (stepped) -->
       <rect x="440" y="52"  width="80" height="8"  fill="#1c0e08"/>
       <rect x="448" y="44"  width="64" height="8"  fill="#180c07"/>
       <rect x="456" y="36"  width="48" height="8"  fill="#140a06"/>
       <rect x="464" y="28"  width="32" height="8"  fill="#100806"/>
       <rect x="472" y="20"  width="16" height="8"  fill="#0e0605"/>
-      <!-- chimney -->
       <rect x="500" y="10"  width="10" height="20" fill="#1a0e08"/>
-      <!-- body -->
       <rect x="448" y="60"  width="64" height="52" fill="#180c08"/>
-      <!-- windows -->
       <rect x="456" y="68"  width="14" height="12" fill="#0a0604"/>
       <rect x="490" y="68"  width="14" height="12" fill="#0a0604"/>
-      <!-- door (arch) -->
       <rect x="472" y="84"  width="16" height="28" fill="#080604"/>
     </g>
-
-    <!-- ── Tree 4: small, x≈640 ── -->
+    <!-- Tree 4: small, x≈640 -->
     <g fill="#112409">
-      <rect x="632" y="72"  width="16" height="8"/>
-      <rect x="624" y="80"  width="32" height="8"/>
-      <rect x="616" y="88"  width="48" height="8"/>
-      <rect x="624" y="96"  width="32" height="8"/>
-      <rect x="616" y="104" width="48" height="8"/>
-      <rect x="632" y="104" width="16" height="8"/>
+      <rect x="632" y="72"  width="16" height="8"/><rect x="624" y="80"  width="32" height="8"/>
+      <rect x="616" y="88"  width="48" height="8"/><rect x="624" y="96"  width="32" height="8"/>
+      <rect x="616" y="104" width="48" height="8"/><rect x="632" y="104" width="16" height="8"/>
     </g>
-
-    <!-- ── Tree 5: tall, x≈760 ── -->
+    <!-- Tree 5: tall, x≈760 -->
     <g fill="#0d1f08">
-      <rect x="752" y="32"  width="16" height="8"/>
-      <rect x="744" y="40"  width="32" height="8"/>
-      <rect x="736" y="48"  width="48" height="8"/>
-      <rect x="744" y="56"  width="32" height="8"/>
-      <rect x="736" y="64"  width="48" height="8"/>
-      <rect x="744" y="72"  width="32" height="8"/>
-      <rect x="736" y="80"  width="48" height="8"/>
-      <rect x="744" y="88"  width="32" height="8"/>
-      <rect x="736" y="96"  width="48" height="8"/>
-      <rect x="752" y="104" width="16" height="8"/>
+      <rect x="752" y="32"  width="16" height="8"/><rect x="744" y="40"  width="32" height="8"/>
+      <rect x="736" y="48"  width="48" height="8"/><rect x="744" y="56"  width="32" height="8"/>
+      <rect x="736" y="64"  width="48" height="8"/><rect x="744" y="72"  width="32" height="8"/>
+      <rect x="736" y="80"  width="48" height="8"/><rect x="744" y="88"  width="32" height="8"/>
+      <rect x="736" y="96"  width="48" height="8"/><rect x="752" y="104" width="16" height="8"/>
     </g>
-
-    <!-- ── Tree 6: medium, x≈900 ── -->
+    <!-- Tree 6: medium, x≈900 -->
     <g fill="#112409">
-      <rect x="892" y="48"  width="16" height="8"/>
-      <rect x="884" y="56"  width="32" height="8"/>
-      <rect x="876" y="64"  width="48" height="8"/>
-      <rect x="884" y="72"  width="32" height="8"/>
-      <rect x="876" y="80"  width="48" height="8"/>
-      <rect x="884" y="88"  width="32" height="8"/>
-      <rect x="876" y="96"  width="48" height="8"/>
-      <rect x="892" y="104" width="16" height="8"/>
+      <rect x="892" y="48"  width="16" height="8"/><rect x="884" y="56"  width="32" height="8"/>
+      <rect x="876" y="64"  width="48" height="8"/><rect x="884" y="72"  width="32" height="8"/>
+      <rect x="876" y="80"  width="48" height="8"/><rect x="884" y="88"  width="32" height="8"/>
+      <rect x="876" y="96"  width="48" height="8"/><rect x="892" y="104" width="16" height="8"/>
     </g>
-
-    <!-- ── Tree 7: small, x≈1050 ── -->
+    <!-- Tree 7: small, x≈1050 -->
     <g fill="#0d1f08">
-      <rect x="1042" y="64"  width="16" height="8"/>
-      <rect x="1034" y="72"  width="32" height="8"/>
-      <rect x="1026" y="80"  width="48" height="8"/>
-      <rect x="1034" y="88"  width="32" height="8"/>
-      <rect x="1026" y="96"  width="48" height="8"/>
-      <rect x="1042" y="104" width="16" height="8"/>
+      <rect x="1042" y="64"  width="16" height="8"/><rect x="1034" y="72"  width="32" height="8"/>
+      <rect x="1026" y="80"  width="48" height="8"/><rect x="1034" y="88"  width="32" height="8"/>
+      <rect x="1026" y="96"  width="48" height="8"/><rect x="1042" y="104" width="16" height="8"/>
     </g>
-
-    <!-- ── Tree 8: small, x≈1160 ── -->
+    <!-- Tree 8: small, x≈1160 -->
     <g fill="#112409">
-      <rect x="1152" y="80"  width="16" height="8"/>
-      <rect x="1144" y="88"  width="32" height="8"/>
-      <rect x="1136" y="96"  width="48" height="8"/>
-      <rect x="1144" y="104" width="32" height="8"/>
+      <rect x="1152" y="80"  width="16" height="8"/><rect x="1144" y="88"  width="32" height="8"/>
+      <rect x="1136" y="96"  width="48" height="8"/><rect x="1144" y="104" width="32" height="8"/>
       <rect x="1136" y="104" width="48" height="8"/>
     </g>
   </svg>
 </div>
 
-<div class="content-layer">
+<!-- x-data="burrow()" is on content-layer so the toast sibling is in scope -->
+<div class="content-layer" x-data="burrow()">
   {% block content %}{% endblock %}
 
-  <!-- ── Toast notification ── -->
+  <!-- ── Toast notification (inside x-data scope) ── -->
   <div x-show="toast"
     x-transition:enter="transition ease-out duration-200"
     x-transition:enter-start="opacity-0 translate-y-3"
@@ -570,7 +504,7 @@
     class="toast-box fixed left-4 right-4 max-w-sm mx-auto px-5 py-4 z-50"
     style="bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem))">
     <div class="flex items-start gap-3">
-      <span class="text-lg shrink-0 leading-none mt-0.5">✦</span>
+      <span class="text-lg shrink-0 leading-none mt-0.5">&#10022;</span>
       <span class="vt-font text-xl leading-snug" style="color:var(--parchment)" x-text="toast"></span>
     </div>
   </div>
@@ -581,9 +515,9 @@
 (function () {
   const c = document.getElementById('stars');
   for (let i = 0; i < 90; i++) {
-    const s   = document.createElement('div');
+    const s  = document.createElement('div');
     s.className = 'star';
-    const sz  = Math.random() * 2.5 + 0.5;
+    const sz = Math.random() * 2.5 + 0.5;
     s.style.cssText = [
       `width:${sz}px`, `height:${sz}px`,
       `top:${(Math.random() * 65).toFixed(1)}%`,
@@ -597,10 +531,10 @@
   }
 })();
 
-// ── Alpine data ──
+// ── Alpine component ──
 function burrow() {
   return {
-    // null = not logged in (shows welcome screen)
+    // null = not logged in (welcome screen)
     user:        localStorage.getItem('burrow_user') || null,
     priority:    'normal',
     openPanel:   null,
@@ -636,39 +570,48 @@ function burrow() {
                       : this.priority === 'high'   ? '! ' : '';
       const domPrefix = this.taskDomain ? this.taskDomain + ': ' : '';
       const res       = await fetch('/api/task', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: prefix + domPrefix + body, user: this.user }),
+        body:    JSON.stringify({ body: prefix + domPrefix + body, user: this.user }),
       });
       const data = await res.json();
       if (data.ticket_id) {
-        this.showToast('★ Added: ' + data.enhanced);
-        this.taskBody  = '';
+        this.showToast('\u2605 Added: ' + data.enhanced);
+        this.taskBody   = '';
         this.taskDomain = '';
-        this.priority  = 'normal';
+        this.priority   = 'normal';
         htmx.trigger('#queue-list', 'refresh');
       } else {
-        this.showToast('✗ ' + (data.error || 'something went wrong'));
+        this.showToast('\u2717 ' + (data.error || 'something went wrong'));
       }
+    },
+
+    // Load an action panel via HTMX (called from x-init on panel wrapper)
+    loadPanel(actionId) {
+      if (!this.user) return;
+      htmx.ajax('GET',
+        '/api/action-panel/' + actionId + '?user=' + encodeURIComponent(this.user),
+        { target: '#panel-' + actionId, swap: 'innerHTML' }
+      );
     },
 
     async fireAction(actionId, payload) {
       const res  = await fetch('/api/quick-action', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body:    JSON.stringify({
           action_id: actionId, user: this.user,
-          priority: this.priority, ...payload,
+          priority:  this.priority, ...payload,
         }),
       });
       const data = await res.json();
       if (data.ticket_id) {
-        this.showToast('★ Added: ' + data.enhanced);
+        this.showToast('\u2605 Added: ' + data.enhanced);
         this.openPanel = null;
         this.priority  = 'normal';
         htmx.trigger('#queue-list', 'refresh');
       } else {
-        this.showToast('✗ ' + (data.error || 'something went wrong'));
+        this.showToast('\u2717 ' + (data.error || 'something went wrong'));
       }
     },
   };
