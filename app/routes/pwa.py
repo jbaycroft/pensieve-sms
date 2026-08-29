@@ -1,7 +1,7 @@
 """routes/pwa.py — The Burrow PWA routes."""
 import re
 import logging
-from flask import Blueprint, render_template, request, jsonify, current_app
+from flask import Blueprint, render_template, request, jsonify, current_app, redirect
 
 from ..parser import parse
 from ..enhancer import enhance, infer_domain
@@ -47,6 +47,15 @@ def _parse_and_write(body: str, priority_override: str = "") -> dict:
 
 
 # ── pages ─────────────────────────────────────────────────────────────────────
+
+@pwa_bp.before_request
+def redirect_apex():
+    """Redirect bare theburrow.house → hub.theburrow.house (301)."""
+    host = request.host.split(":")[0]
+    if host == "theburrow.house":
+        target = "https://hub.theburrow.house" + request.full_path.rstrip("?")
+        return redirect(target, code=301)
+
 
 @pwa_bp.route("/")
 def home():
