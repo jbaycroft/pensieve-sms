@@ -5,102 +5,431 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#9b1d20">
+  <meta name="theme-color" content="#0d1b0a">
+  <meta name="description" content="The Burrow — household task hub">
   <title>The Burrow</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/static/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="https://unpkg.com/htmx.org@2.0.3"></script>
   <style>
     [x-cloak] { display: none !important; }
-    body { background: #0f0f1a; color: #e8e8f0; font-family: system-ui, -apple-system, sans-serif; }
-    .pb-safe { padding-bottom: max(1.5rem, env(safe-area-inset-bottom)); }
-    .htmx-indicator { opacity: 0; transition: opacity 200ms; }
-    .htmx-request .htmx-indicator { opacity: 1; }
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+
+    :root {
+      --sky-deep:    #0a1520;
+      --sky-mid:     #0f2030;
+      --wood-dark:   #1e1208;
+      --wood-mid:    #2d1c0a;
+      --wood-light:  #3d2810;
+      --border-dark: #5c3d11;
+      --border-mid:  #8b6020;
+      --border-gold: #c49a2f;
+      --parchment:   #f0ddb0;
+      --parchment-dk:#c8a870;
+      --green-bright:#7ec850;
+      --green-mid:   #4a8a28;
+      --green-dark:  #2d5516;
+      --amber:       #e8b030;
+      --amber-dark:  #b07820;
+      --red-warm:    #c43828;
+      --text-main:   #f0ddb0;
+      --text-muted:  #a08858;
+      --text-dim:    #706040;
+    }
+
+    html { image-rendering: pixelated; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--sky-deep);
+      color: var(--text-main);
+      min-height: 100dvh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ── Night sky background ── */
+    .night-sky {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse at 20% 10%, rgba(30,60,20,0.25) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(20,30,60,0.2) 0%, transparent 50%),
+        linear-gradient(180deg, #0a1520 0%, #0d1b0a 40%, #0a1208 100%);
+    }
+
+    /* Stars */
+    .stars {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .star {
+      position: absolute;
+      background: #fff;
+      border-radius: 50%;
+      animation: twinkle var(--dur, 3s) ease-in-out infinite var(--delay, 0s);
+    }
+    @keyframes twinkle {
+      0%,100% { opacity: var(--min-op, 0.2); transform: scale(1); }
+      50%      { opacity: var(--max-op, 0.9); transform: scale(1.3); }
+    }
+
+    .content-layer { position: relative; z-index: 1; }
+
+    /* ── Pixel panel border (Stardew style) ── */
+    .pixel-panel {
+      background: var(--wood-mid);
+      border: 3px solid var(--border-dark);
+      box-shadow:
+        inset 2px 2px 0 var(--border-gold),
+        inset -2px -2px 0 #3a2008,
+        3px 3px 0 rgba(0,0,0,0.5),
+        0 6px 20px rgba(0,0,0,0.4);
+      border-radius: 4px;
+      position: relative;
+    }
+    .pixel-panel::before {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      border: 1px solid rgba(196,154,47,0.15);
+      border-radius: 2px;
+      pointer-events: none;
+    }
+
+    .pixel-panel-sm {
+      background: var(--wood-dark);
+      border: 2px solid var(--border-dark);
+      box-shadow:
+        inset 1px 1px 0 rgba(196,154,47,0.5),
+        inset -1px -1px 0 #2a1406,
+        2px 2px 0 rgba(0,0,0,0.4);
+      border-radius: 3px;
+    }
+
+    /* ── Pixel font ── */
+    .pixel-font { font-family: 'Press Start 2P', monospace; }
+    .vt-font    { font-family: 'VT323', monospace; }
+
+    /* ── Action buttons (like Stardew skill icons) ── */
+    .action-btn {
+      background: var(--wood-dark);
+      border: 2px solid var(--border-dark);
+      box-shadow:
+        inset 1px 1px 0 rgba(196,154,47,0.4),
+        inset -1px -1px 0 #1a0c04,
+        2px 3px 0 rgba(0,0,0,0.5);
+      border-radius: 4px;
+      transition: all 0.1s;
+      cursor: pointer;
+      position: relative;
+    }
+    .action-btn:hover {
+      background: var(--wood-light);
+      border-color: var(--border-mid);
+      box-shadow:
+        inset 1px 1px 0 rgba(196,154,47,0.6),
+        inset -1px -1px 0 #2a1406,
+        2px 3px 0 rgba(0,0,0,0.4);
+      transform: translateY(-2px);
+    }
+    .action-btn:active {
+      transform: translateY(1px);
+      box-shadow:
+        inset 1px 1px 0 #1a0c04,
+        inset -1px -1px 0 rgba(196,154,47,0.3),
+        1px 1px 0 rgba(0,0,0,0.4);
+    }
+    .action-btn.active {
+      background: var(--green-dark);
+      border-color: var(--green-mid);
+      box-shadow:
+        inset 1px 1px 0 rgba(126,200,80,0.4),
+        inset -1px -1px 0 #1a3a0a,
+        2px 3px 0 rgba(0,0,0,0.5),
+        0 0 12px rgba(74,138,40,0.3);
+    }
+
+    /* ── Input ── */
+    .burrow-input {
+      background: var(--wood-dark);
+      border: 2px solid var(--border-dark);
+      box-shadow: inset 2px 2px 4px rgba(0,0,0,0.4), inset 1px 1px 0 #1a0c04;
+      color: var(--parchment);
+      border-radius: 3px;
+      padding: 11px 14px;
+      width: 100%;
+      outline: none;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .burrow-input::placeholder { color: var(--text-dim); }
+    .burrow-input:focus {
+      border-color: var(--green-mid);
+      box-shadow: inset 2px 2px 4px rgba(0,0,0,0.4), 0 0 0 2px rgba(74,138,40,0.25);
+    }
+
+    /* ── Select ── */
+    .burrow-select {
+      background: var(--wood-dark);
+      border: 2px solid var(--border-dark);
+      box-shadow: inset 2px 2px 4px rgba(0,0,0,0.4);
+      color: var(--parchment-dk);
+      border-radius: 3px;
+      padding: 10px 32px 10px 12px;
+      font-size: 0.875rem;
+      outline: none;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a08858' stroke-width='2' fill='none' stroke-linecap='square'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      transition: border-color 0.15s;
+    }
+    .burrow-select:focus { border-color: var(--green-mid); }
+    .burrow-select option { background: #1e1208; }
+
+    /* ── Primary button ── */
+    .btn-primary {
+      background: var(--green-dark);
+      border: 2px solid var(--green-dark);
+      box-shadow:
+        inset 1px 1px 0 rgba(126,200,80,0.35),
+        inset -1px -1px 0 #1a3a0a,
+        2px 3px 0 rgba(0,0,0,0.5);
+      color: var(--parchment);
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.05em;
+      border-radius: 3px;
+      padding: 12px 20px;
+      cursor: pointer;
+      transition: all 0.1s;
+      white-space: nowrap;
+    }
+    .btn-primary:hover {
+      background: var(--green-mid);
+      border-color: var(--green-mid);
+      box-shadow:
+        inset 1px 1px 0 rgba(126,200,80,0.5),
+        inset -1px -1px 0 #1a3a0a,
+        2px 3px 0 rgba(0,0,0,0.4);
+      transform: translateY(-1px);
+    }
+    .btn-primary:active {
+      transform: translateY(1px);
+      box-shadow: inset 2px 2px 0 rgba(0,0,0,0.3), 1px 1px 0 rgba(0,0,0,0.4);
+    }
+
+    /* ── Priority pills ── */
+    .priority-pill {
+      border: 2px solid var(--border-dark);
+      background: var(--wood-dark);
+      box-shadow: inset 1px 1px 0 rgba(196,154,47,0.2), 1px 2px 0 rgba(0,0,0,0.4);
+      color: var(--text-muted);
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.45rem;
+      border-radius: 3px;
+      padding: 8px 4px;
+      cursor: pointer;
+      transition: all 0.1s;
+      text-align: center;
+    }
+    .priority-pill:hover { background: var(--wood-light); color: var(--parchment-dk); }
+    .priority-pill.p-normal { background: var(--wood-light); border-color: var(--border-mid); color: var(--parchment-dk); }
+    .priority-pill.p-high   { background: #3d2800; border-color: #a07020; color: var(--amber); }
+    .priority-pill.p-urgent { background: #3d0f0a; border-color: #8b2818; color: #e87060; }
+
+    /* ── Queue item ── */
+    .quest-item {
+      background: var(--wood-dark);
+      border: 2px solid var(--border-dark);
+      box-shadow: inset 1px 1px 0 rgba(196,154,47,0.15), 1px 2px 0 rgba(0,0,0,0.35);
+      border-radius: 3px;
+      transition: background 0.15s;
+    }
+    .quest-item:hover { background: #251408; }
+
+    /* ── User toggle ── */
+    .user-tab {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.5rem;
+      border-radius: 2px;
+      padding: 8px 12px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.1s;
+      color: var(--text-muted);
+      background: transparent;
+    }
+    .user-tab:hover { color: var(--parchment-dk); }
+    .user-tab.active {
+      background: var(--green-dark);
+      border-color: var(--green-mid);
+      color: var(--parchment);
+      box-shadow: inset 1px 1px 0 rgba(126,200,80,0.3), 1px 2px 0 rgba(0,0,0,0.4);
+    }
+
+    /* ── Section label ── */
+    .section-label {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.45rem;
+      color: var(--text-muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    /* ── Toast ── */
+    .toast-box {
+      background: var(--wood-mid);
+      border: 3px solid var(--border-dark);
+      box-shadow:
+        inset 2px 2px 0 rgba(196,154,47,0.4),
+        inset -2px -2px 0 #2a1406,
+        3px 4px 0 rgba(0,0,0,0.6);
+      border-radius: 4px;
+    }
+
+    /* ── Safe area ── */
+    .pb-safe { padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
+    .pt-safe { padding-top: max(0.5rem, env(safe-area-inset-top)); }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--wood-dark); }
+    ::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 0; }
+
+    /* ── Checkbox ── */
+    input[type="checkbox"] { accent-color: var(--green-mid); }
   </style>
 </head>
-<body class="min-h-screen" x-data="burrow()" x-cloak>
+<body>
 
+<!-- Night sky -->
+<div class="night-sky"></div>
+<div class="stars" id="stars"></div>
+
+<div class="content-layer">
   {% block content %}{% endblock %}
 
-  <!-- Toast -->
-  <div x-show="toast" x-transition
-    class="fixed bottom-8 left-4 right-4 max-w-lg mx-auto bg-gray-700 border border-gray-600
-           text-white rounded-2xl px-5 py-4 shadow-2xl text-sm z-50 pb-safe">
-    <span x-text="toast"></span>
+  <!-- Toast notification -->
+  <div x-show="toast"
+    x-transition:enter="transition ease-out duration-200"
+    x-transition:enter-start="opacity-0 translate-y-3"
+    x-transition:enter-end="opacity-100 translate-y-0"
+    x-transition:leave="transition ease-in duration-150"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0 translate-y-2"
+    x-cloak
+    class="toast-box fixed bottom-6 left-4 right-4 max-w-sm mx-auto px-5 py-4 z-50">
+    <div class="flex items-start gap-3">
+      <span class="text-base shrink-0 mt-0.5">✦</span>
+      <span class="vt-font text-lg leading-snug" style="color:var(--parchment)" x-text="toast"></span>
+    </div>
   </div>
+</div>
 
-  <script>
-  function burrow() {
-    return {
-      user:      localStorage.getItem('burrow_user') || 'John',
-      priority:  'normal',
-      openPanel: null,
-      taskBody:  '',
-      taskDomain:'',
-      toast:     null,
-      _toastTimer: null,
-
-      setUser(u) {
-        this.user = u;
-        localStorage.setItem('burrow_user', u);
-        if (this.openPanel) this.openPanel = null;
-      },
-
-      showToast(msg) {
-        this.toast = msg;
-        clearTimeout(this._toastTimer);
-        this._toastTimer = setTimeout(() => this.toast = null, 4000);
-      },
-
-      async submitTask() {
-        const body = this.taskBody.trim();
-        if (!body) return;
-        const prefix      = this.priority === 'urgent' ? '!! '
-                          : this.priority === 'high'   ? '! ' : '';
-        const domPrefix   = this.taskDomain ? this.taskDomain + ': ' : '';
-        const payload     = prefix + domPrefix + body;
-        const res  = await fetch('/api/task', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ body: payload, user: this.user }),
-        });
-        const data = await res.json();
-        if (data.ticket_id) {
-          this.showToast(data.ack + ' — ' + data.enhanced);
-          this.taskBody = '';
-          this.taskDomain = '';
-          this.priority = 'normal';
-          htmx.trigger('#queue-list', 'refresh');
-        } else {
-          this.showToast('Error: ' + (data.error || 'unknown'));
-        }
-      },
-
-      async fireAction(actionId, payload) {
-        const res  = await fetch('/api/quick-action', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ action_id: actionId, user: this.user,
-                                 priority: this.priority, ...payload }),
-        });
-        const data = await res.json();
-        if (data.ticket_id) {
-          this.showToast(data.ack + ' — ' + data.enhanced);
-          this.openPanel = null;
-          this.priority = 'normal';
-          htmx.trigger('#queue-list', 'refresh');
-        } else {
-          this.showToast('Error: ' + (data.error || 'unknown'));
-        }
-      },
-    }
+<script>
+// Generate stars
+(function() {
+  const container = document.getElementById('stars');
+  const count = 80;
+  for (let i = 0; i < count; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2.5 + 0.5;
+    s.style.cssText = `
+      width:${size}px; height:${size}px;
+      top:${Math.random()*70}%;
+      left:${Math.random()*100}%;
+      --dur:${(Math.random()*4+2).toFixed(1)}s;
+      --delay:-${(Math.random()*4).toFixed(1)}s;
+      --min-op:${(Math.random()*0.2+0.05).toFixed(2)};
+      --max-op:${(Math.random()*0.5+0.4).toFixed(2)};
+    `;
+    container.appendChild(s);
   }
+})();
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+function burrow() {
+  return {
+    user:       localStorage.getItem('burrow_user') || 'John',
+    priority:   'normal',
+    openPanel:  null,
+    taskBody:   '',
+    taskDomain: '',
+    toast:      null,
+    _toastTimer: null,
+
+    setUser(u) {
+      this.user = u;
+      localStorage.setItem('burrow_user', u);
+      if (this.openPanel) this.openPanel = null;
+    },
+
+    showToast(msg) {
+      this.toast = msg;
+      clearTimeout(this._toastTimer);
+      this._toastTimer = setTimeout(() => this.toast = null, 4500);
+    },
+
+    async submitTask() {
+      const body = this.taskBody.trim();
+      if (!body) return;
+      const prefix    = this.priority === 'urgent' ? '!! '
+                      : this.priority === 'high'   ? '! ' : '';
+      const domPrefix = this.taskDomain ? this.taskDomain + ': ' : '';
+      const payload   = prefix + domPrefix + body;
+      const res = await fetch('/api/task', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ body: payload, user: this.user }),
+      });
+      const data = await res.json();
+      if (data.ticket_id) {
+        this.showToast('★ Added: ' + data.enhanced);
+        this.taskBody = '';
+        this.taskDomain = '';
+        this.priority = 'normal';
+        htmx.trigger('#queue-list', 'refresh');
+      } else {
+        this.showToast('✗ ' + (data.error || 'something went wrong'));
+      }
+    },
+
+    async fireAction(actionId, payload) {
+      const res = await fetch('/api/quick-action', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ action_id: actionId, user: this.user,
+                               priority: this.priority, ...payload }),
+      });
+      const data = await res.json();
+      if (data.ticket_id) {
+        this.showToast('★ Added: ' + data.enhanced);
+        this.openPanel = null;
+        this.priority = 'normal';
+        htmx.trigger('#queue-list', 'refresh');
+      } else {
+        this.showToast('✗ ' + (data.error || 'something went wrong'));
+      }
+    },
   }
-  </script>
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
 </body>
 </html>

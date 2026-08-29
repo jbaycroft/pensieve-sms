@@ -1,78 +1,89 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="max-w-lg mx-auto px-4 pt-8 pb-32">
+<div class="max-w-lg mx-auto px-4 pt-safe pt-6 pb-32" x-data="burrow()">
 
-  <!-- Header + user toggle -->
-  <div class="flex items-start justify-between mb-7">
+  <!-- ── Header ── -->
+  <div class="flex items-start justify-between mb-6">
     <div>
-      <h1 class="text-2xl font-bold text-white tracking-tight">🏠 The Burrow</h1>
-      <p class="text-sm text-gray-500 mt-0.5">
-        <span x-text="user === 'John' ? 'Morning, John.' : 'Hey Jeannie!'"></span>
+      <h1 class="pixel-font text-sm mb-2" style="color:var(--amber); text-shadow: 2px 2px 0 rgba(0,0,0,0.6);">
+        ⌂ The Burrow
+      </h1>
+      <p class="vt-font text-xl" style="color:var(--text-muted)">
+        <span x-text="user === 'John' ? '✦ Morning, John.' : '✦ Hey Jeannie!'"></span>
       </p>
     </div>
-    <div class="flex gap-1 bg-gray-800 rounded-full p-1 mt-1">
+
+    <!-- User toggle -->
+    <div class="pixel-panel-sm flex p-1 gap-1 mt-1">
       <button @click="setUser('John')"
-        :class="user==='John' ? 'bg-red-800 text-white' : 'text-gray-400 hover:text-gray-200'"
-        class="px-4 py-1.5 rounded-full text-sm font-medium transition-all">John</button>
+        :class="user==='John' ? 'user-tab active' : 'user-tab'">John</button>
       <button @click="setUser('Jeannie')"
-        :class="user==='Jeannie' ? 'bg-red-800 text-white' : 'text-gray-400 hover:text-gray-200'"
-        class="px-4 py-1.5 rounded-full text-sm font-medium transition-all">Jeannie</button>
+        :class="user==='Jeannie' ? 'user-tab active' : 'user-tab'">Jeannie</button>
     </div>
   </div>
 
-  <!-- Quick action grid -->
-  <div class="grid grid-cols-3 gap-3 mb-5">
-    {% for action in actions %}
-    <button
-      @click="openPanel = (openPanel === '{{ action.id }}') ? null : '{{ action.id }}'"
-      :class="openPanel === '{{ action.id }}'
-                ? 'ring-2 ring-red-600 bg-gray-750 scale-95'
-                : 'bg-gray-800 hover:bg-gray-750 active:scale-95'"
-      class="rounded-2xl p-4 text-center transition-all duration-150 select-none">
-      <div class="text-3xl mb-1 leading-none">{{ action.icon }}</div>
-      <div class="text-xs text-gray-300 font-medium truncate">{{ action.label }}</div>
-    </button>
-    {% endfor %}
+  <!-- ── Quick action grid ── -->
+  <div class="mb-2">
+    <div class="section-label mb-3">⚡ Quick Actions</div>
+    <div class="grid grid-cols-3 gap-3">
+      {% for action in actions %}
+      <button
+        @click="openPanel = (openPanel === '{{ action.id }}') ? null : '{{ action.id }}'"
+        :class="openPanel === '{{ action.id }}' ? 'action-btn active' : 'action-btn'"
+        class="p-4 text-center select-none">
+        <div class="text-3xl mb-2 leading-none">{{ action.icon }}</div>
+        <div class="pixel-font truncate" style="font-size:0.42rem; color:var(--parchment-dk)">{{ action.label }}</div>
+      </button>
+      {% endfor %}
+    </div>
   </div>
 
-  <!-- Expanded action panel (loaded via HTMX when openPanel changes) -->
+  <!-- ── Action panels (HTMX) ── -->
   {% for action in actions %}
   <div
     x-show="openPanel === '{{ action.id }}'"
     x-cloak
+    x-transition:enter="transition ease-out duration-150"
+    x-transition:enter-start="opacity-0 -translate-y-2"
+    x-transition:enter-end="opacity-100 translate-y-0"
+    x-transition:leave="transition ease-in duration-100"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
     x-effect="if (openPanel === '{{ action.id }}') htmx.ajax('GET', '/api/action-panel/{{ action.id }}?user=' + user, {target: '#panel-{{ action.id }}', swap: 'innerHTML'})"
-    class="mb-5">
-    <div id="panel-{{ action.id }}"
-      class="bg-gray-800 border border-gray-700 rounded-2xl p-5 transition-all">
-      <div class="text-gray-500 text-sm text-center py-2">Loading…</div>
+    class="my-4">
+    <div id="panel-{{ action.id }}" class="pixel-panel p-5">
+      <div class="vt-font text-xl text-center" style="color:var(--text-dim)">Loading…</div>
     </div>
   </div>
   {% endfor %}
 
-  <!-- Priority strip -->
-  <div class="flex gap-2 mb-3">
-    {% for label, val, icon in [('Normal','normal','⚪'), ('High','high','🟡'), ('Urgent','urgent','🔴')] %}
-    <button @click="priority = '{{ val }}'"
-      :class="priority === '{{ val }}'
-                ? '{% if val == 'urgent' %}bg-red-700{% elif val == 'high' %}bg-yellow-700{% else %}bg-gray-600{% endif %} text-white'
-                : 'bg-gray-800 text-gray-400 hover:text-gray-200'"
-      class="flex-1 py-2 rounded-xl text-sm font-medium transition-all">
-      {{ icon }} {{ label }}
-    </button>
-    {% endfor %}
+  <!-- ── Priority selector ── -->
+  <div class="mt-5 mb-3">
+    <div class="section-label mb-3">⚠ Priority</div>
+    <div class="grid grid-cols-3 gap-2">
+      {% for label, val, icon in [('Normal','normal','⚪'),('High','high','★'),('Urgent','urgent','‼')] %}
+      <button @click="priority = '{{ val }}'"
+        :class="{
+          'priority-pill p-normal': priority === '{{ val }}' && '{{ val }}' === 'normal',
+          'priority-pill p-high':   priority === '{{ val }}' && '{{ val }}' === 'high',
+          'priority-pill p-urgent': priority === '{{ val }}' && '{{ val }}' === 'urgent',
+          'priority-pill': priority !== '{{ val }}'
+        }">
+        {{ icon }} {{ label }}
+      </button>
+      {% endfor %}
+    </div>
   </div>
 
-  <!-- Free-form input -->
-  <div class="bg-gray-800 border border-gray-700 rounded-2xl p-4 mb-6">
+  <!-- ── Free-form task input ── -->
+  <div class="pixel-panel p-4 mb-6">
+    <div class="section-label mb-3">✎ Add Task</div>
     <input type="text" x-model="taskBody"
       @keydown.enter="submitTask()"
-      placeholder="Add a task…"
-      class="w-full bg-gray-700 text-white rounded-xl px-4 py-3 mb-3 outline-none
-             focus:ring-2 focus:ring-red-600 placeholder-gray-500 text-sm">
+      placeholder="What needs doing?"
+      class="burrow-input mb-3">
     <div class="flex gap-2">
-      <select x-model="taskDomain"
-        class="flex-1 bg-gray-700 text-gray-300 rounded-xl px-3 py-2.5 text-sm outline-none
-               focus:ring-2 focus:ring-red-600">
+      <select x-model="taskDomain" class="burrow-select flex-1">
         <option value="">Domain: auto</option>
         <option value="w">Work</option>
         <option value="h">Hydroponics</option>
@@ -81,25 +92,23 @@
         <option value="ho">Hobby</option>
         <option value="c">Connection</option>
       </select>
-      <button @click="submitTask()"
-        class="bg-red-700 hover:bg-red-600 text-white font-bold rounded-xl px-6 py-2.5
-               text-sm transition-all active:scale-95 whitespace-nowrap">
-        Queue it
-      </button>
+      <button @click="submitTask()" class="btn-primary">Queue it</button>
     </div>
   </div>
 
-  <!-- Live queue -->
+  <!-- ── Quest log (queue) ── -->
   <div class="flex items-center justify-between mb-3">
-    <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-widest">Queue</h2>
+    <div class="section-label">📜 Quest Log</div>
     <button hx-get="/api/queue" hx-target="#queue-list" hx-swap="innerHTML"
-      class="text-gray-600 hover:text-gray-400 text-sm transition-colors">↻</button>
+      class="pixel-font transition-all hover:opacity-80 active:scale-90"
+      style="font-size:0.5rem; color:var(--text-muted)">↺ refresh</button>
   </div>
+
   <div id="queue-list"
        hx-get="/api/queue"
        hx-trigger="load, refresh"
        hx-swap="innerHTML">
-    <div class="text-gray-600 text-sm text-center py-6">Loading…</div>
+    <div class="vt-font text-xl text-center py-8" style="color:var(--text-dim)">Loading…</div>
   </div>
 
 </div>

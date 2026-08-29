@@ -1,28 +1,43 @@
 {% if tickets %}
   {% for t in tickets %}
-  <div class="flex items-start gap-3 bg-gray-800 border border-gray-750 rounded-xl px-4 py-3 mb-2">
-    <span class="text-xs font-bold mt-0.5 w-5 shrink-0 text-center
-      {% if t.priority in ('critical','urgent') %}text-red-400
-      {% elif t.priority == 'high' %}text-yellow-400
-      {% else %}text-gray-600{% endif %}">
-      {{ loop.index }}
-    </span>
+  <div class="quest-item flex items-start gap-3 px-4 py-3 mb-2">
+    <!-- Priority/index indicator -->
+    <div class="shrink-0 w-6 text-center pt-0.5">
+      {% if loop.first %}
+        <span class="vt-font text-2xl" style="color:var(--amber)">★</span>
+      {% elif t.priority in ('critical','urgent') %}
+        <span class="vt-font text-2xl" style="color:#e87060">‼</span>
+      {% elif t.priority == 'high' %}
+        <span class="vt-font text-2xl" style="color:var(--amber)">!</span>
+      {% else %}
+        <span class="vt-font text-xl" style="color:var(--text-dim)">{{ loop.index }}</span>
+      {% endif %}
+    </div>
+
+    <!-- Task body -->
     <div class="flex-1 min-w-0">
-      <div class="text-sm text-white font-medium leading-snug">{{ t.title }}</div>
-      <div class="text-xs text-gray-500 mt-1">
+      <div class="text-sm font-medium leading-snug mb-1" style="color:var(--parchment)">{{ t.title }}</div>
+      <div class="vt-font text-base" style="color:var(--text-dim)">
         {{ t.domain }}{% if t.est_min %} · {{ t.est_min }} min{% endif %}
         {% if t.status == 'active' %}
-          <span class="text-green-400 ml-1">● active</span>
+          <span style="color:var(--green-bright)"> ● active</span>
         {% endif %}
       </div>
     </div>
+
+    <!-- HEAD badge -->
     {% if loop.first %}
-    <span class="text-xs bg-red-950 text-red-400 border border-red-900 rounded-full px-2 py-0.5 shrink-0 font-medium">
+    <span class="pixel-font shrink-0 px-2 py-1 rounded"
+      style="font-size:0.4rem; background:rgba(126,200,80,0.12); border:1px solid rgba(126,200,80,0.3); color:var(--green-bright)">
       HEAD
     </span>
     {% endif %}
   </div>
   {% endfor %}
 {% else %}
-  <div class="text-gray-600 text-sm text-center py-10">Queue is empty.</div>
+  <div class="pixel-panel p-8 text-center">
+    <div class="text-3xl mb-3">🌱</div>
+    <div class="pixel-font" style="font-size:0.45rem; color:var(--text-dim)">Quest log is empty.</div>
+    <div class="vt-font text-lg mt-2" style="color:var(--text-dim)">Enjoy the day!</div>
+  </div>
 {% endif %}

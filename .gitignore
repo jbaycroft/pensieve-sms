@@ -1,4 +1,4 @@
-﻿.env
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -9,4 +9,35 @@ build/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Secrets / credentials — NEVER commit these
+.env
+*.env
+*.pem
+*.key
+*.p12
+*.pfx
+.cloudflared/
+cert.pem
+*.json.secret
+
+# Tunnel credentials (cloudflared writes these to ~/.cloudflared/)
+*-tunnel.json
+*-credentials.json
+
+# Local config overrides
+pensieve.env
+local.env
+.env.local
+.env.production
+.env.staging
+
+# Logs
 *.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
