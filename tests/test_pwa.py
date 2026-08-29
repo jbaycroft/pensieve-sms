@@ -127,7 +127,7 @@ def test_queue_empty_when_no_tickets(client):
     db_mod.close_ticket("TKT-EXISTING")
     r = client.get("/api/queue")
     assert r.status_code == 200
-    assert b"Queue is empty" in r.data
+    assert b"Quest log is empty" in r.data
 
 
 # ── action panels ─────────────────────────────────────────────────────────────

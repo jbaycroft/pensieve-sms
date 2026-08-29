@@ -1,5 +1,5 @@
 {% if action.type == 'coffee' %}
-{# ── Coffee panel ── #}
+{# ── Coffee order panel ── #}
 <div x-data="{
   size:     '{{ prefs.size }}',
   drink:    '{{ prefs.drink }}',
@@ -7,16 +7,19 @@
   remember: true,
   submit() { $root.fireAction('coffee', {size:this.size, drink:this.drink, notes:this.notes, remember:this.remember}); }
 }">
+
   <div class="flex items-center justify-between mb-5">
     <div>
-      <div class="pixel-font mb-1" style="font-size:0.55rem; color:var(--amber)">☕ Coffee Order</div>
-      <div class="vt-font text-xl" style="color:var(--text-muted)">
+      <div style="font-family:'Inter',sans-serif; font-size:0.8rem; font-weight:700;
+                  letter-spacing:0.08em; color:var(--amber); text-transform:uppercase">
+        ☕ Coffee Order
+      </div>
+      <div class="vt-font text-xl mt-1" style="color:var(--text-muted)">
         for <span style="color:var(--green-bright)" x-text="$root.user"></span>
       </div>
     </div>
     <button @click="$root.openPanel=null"
-      class="pixel-font hover:opacity-70 transition-opacity"
-      style="font-size:0.5rem; color:var(--text-muted)">✕ close</button>
+      class="btn-ghost" style="font-size:0.8rem">✕ close</button>
   </div>
 
   <!-- Size -->
@@ -26,19 +29,21 @@
       {% for s in ['small','medium','large'] %}
       <button @click="size='{{ s }}'"
         :class="size==='{{ s }}' ? 'action-btn active' : 'action-btn'"
-        class="py-3 pixel-font capitalize" style="font-size:0.45rem">{{ s }}</button>
+        class="py-2 capitalize"
+        style="font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600; color:var(--parchment-dk)">{{ s }}</button>
       {% endfor %}
     </div>
   </div>
 
-  <!-- Drink -->
+  <!-- Drink type -->
   <div class="mb-4">
     <div class="section-label mb-2">Drink</div>
     <div class="flex flex-wrap gap-2">
       {% for d in ['drip','espresso','latte','cappuccino','americano','cold brew'] %}
       <button @click="drink='{{ d }}'"
         :class="drink==='{{ d }}' ? 'action-btn active' : 'action-btn'"
-        class="px-3 py-2 pixel-font capitalize" style="font-size:0.4rem">{{ d }}</button>
+        class="px-3 py-2 capitalize"
+        style="font-family:'Inter',sans-serif; font-size:0.8rem; font-weight:600; color:var(--parchment-dk)">{{ d }}</button>
       {% endfor %}
     </div>
   </div>
@@ -46,27 +51,31 @@
   <!-- Notes -->
   <div class="mb-5">
     <div class="section-label mb-2">Notes</div>
-    <input type="text" x-model="notes" placeholder="oat milk, 1 sugar…"
+    <input type="text" x-model="notes"
+      placeholder="oat milk, 1 sugar…"
+      autocomplete="off"
       class="burrow-input">
   </div>
 
-  <div class="flex items-center justify-between">
+  <!-- Footer: remember + submit -->
+  <div class="flex items-center justify-between gap-4">
     <label class="flex items-center gap-2 cursor-pointer select-none">
       <input type="checkbox" x-model="remember">
-      <span class="pixel-font" style="font-size:0.45rem; color:var(--text-muted)">Remember</span>
+      <span style="font-family:'Inter',sans-serif; font-size:0.8rem; font-weight:500;
+                   color:var(--text-muted)">Remember</span>
     </label>
     <button @click="submit()" class="btn-primary">Queue it</button>
   </div>
 </div>
 
 {% elif action.type == 'prefilled' %}
-{# ── Prefilled: one-tap ── #}
+{# ── One-tap prefilled action ── #}
 <div>
   <div class="flex items-center justify-between mb-4">
-    <div class="pixel-font" style="font-size:0.55rem; color:var(--amber)">{{ action.icon }} {{ action.label }}</div>
-    <button @click="$root.openPanel=null"
-      class="pixel-font hover:opacity-70 transition-opacity"
-      style="font-size:0.5rem; color:var(--text-muted)">✕ close</button>
+    <div style="font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:700; color:var(--amber)">
+      {{ action.icon }} {{ action.label }}
+    </div>
+    <button @click="$root.openPanel=null" class="btn-ghost" style="font-size:0.8rem">✕ close</button>
   </div>
   <p class="vt-font text-xl mb-5" style="color:var(--parchment-dk)">{{ action.task }}</p>
   <button @click="$root.fireAction('{{ action.id }}', {})" class="btn-primary w-full">
@@ -75,17 +84,19 @@
 </div>
 
 {% else %}
-{# ── Freeform ── #}
+{# ── Freeform action ── #}
 <div x-data="{ body: '' }">
   <div class="flex items-center justify-between mb-4">
-    <div class="pixel-font" style="font-size:0.55rem; color:var(--amber)">{{ action.icon }} {{ action.label }}</div>
-    <button @click="$root.openPanel=null"
-      class="pixel-font hover:opacity-70 transition-opacity"
-      style="font-size:0.5rem; color:var(--text-muted)">✕ close</button>
+    <div style="font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:700; color:var(--amber)">
+      {{ action.icon }} {{ action.label }}
+    </div>
+    <button @click="$root.openPanel=null" class="btn-ghost" style="font-size:0.8rem">✕ close</button>
   </div>
-  <input type="text" x-model="body"
+  <input type="text"
+    x-model="body"
     @keydown.enter="$root.fireAction('{{ action.id }}', {body})"
     placeholder="What needs doing?"
+    autocomplete="off"
     class="burrow-input mb-3"
     x-init="$nextTick(() => $el.focus())">
   <button @click="$root.fireAction('{{ action.id }}', {body})" class="btn-primary w-full">

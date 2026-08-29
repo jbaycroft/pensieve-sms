@@ -6,13 +6,13 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0d1b0a">
-  <meta name="description" content="The Burrow — household task hub">
+  <meta name="description" content="The Burrow — household quest log at theburrow.house">
   <title>The Burrow</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/static/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="https://unpkg.com/htmx.org@2.0.3"></script>
@@ -20,6 +20,7 @@
     [x-cloak] { display: none !important; }
     * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
 
+    /* ── Design tokens ── */
     :root {
       --sky-deep:    #0a1520;
       --sky-mid:     #0f2030;
@@ -29,31 +30,31 @@
       --border-dark: #5c3d11;
       --border-mid:  #8b6020;
       --border-gold: #c49a2f;
-      --parchment:   #f0ddb0;
-      --parchment-dk:#c8a870;
+      /* Text — all pass WCAG AA (≥4.5:1) on --wood-dark (#1e1208) */
+      --parchment:   #f0ddb0;   /* ~12:1 */
+      --parchment-dk:#cca870;   /* ~7.4:1 */
+      --text-muted:  #c4a070;   /* ~6.1:1 — was #a08858 (failed) */
+      --text-dim:    #9a7a50;   /* ~4.6:1 — was #706040 (failed) */
       --green-bright:#7ec850;
       --green-mid:   #4a8a28;
       --green-dark:  #2d5516;
       --amber:       #e8b030;
       --amber-dark:  #b07820;
       --red-warm:    #c43828;
-      --text-main:   #f0ddb0;
-      --text-muted:  #a08858;
-      --text-dim:    #706040;
     }
 
-    html { image-rendering: pixelated; }
+    /* NOTE: image-rendering removed from html — it corrupted text rendering */
 
     body {
       font-family: 'Inter', sans-serif;
       background: var(--sky-deep);
-      color: var(--text-main);
+      color: var(--parchment);
       min-height: 100dvh;
       overflow-x: hidden;
       position: relative;
     }
 
-    /* ── Night sky background ── */
+    /* ── Night sky ── */
     .night-sky {
       position: fixed;
       inset: 0;
@@ -64,13 +65,8 @@
         linear-gradient(180deg, #0a1520 0%, #0d1b0a 40%, #0a1208 100%);
     }
 
-    /* Stars */
-    .stars {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      pointer-events: none;
-    }
+    /* ── Stars ── */
+    .stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
     .star {
       position: absolute;
       background: #fff;
@@ -82,9 +78,17 @@
       50%      { opacity: var(--max-op, 0.9); transform: scale(1.3); }
     }
 
+    /* ── Landscape layer ── */
+    .landscape-layer {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
     .content-layer { position: relative; z-index: 1; }
 
-    /* ── Pixel panel border (Stardew style) ── */
+    /* ── Pixel panel (Stardew-style raised wooden frame) ── */
     .pixel-panel {
       background: var(--wood-mid);
       border: 3px solid var(--border-dark);
@@ -104,7 +108,6 @@
       border-radius: 2px;
       pointer-events: none;
     }
-
     .pixel-panel-sm {
       background: var(--wood-dark);
       border: 2px solid var(--border-dark);
@@ -115,11 +118,11 @@
       border-radius: 3px;
     }
 
-    /* ── Pixel font ── */
+    /* ── Fonts ── */
     .pixel-font { font-family: 'Press Start 2P', monospace; }
     .vt-font    { font-family: 'VT323', monospace; }
 
-    /* ── Action buttons (like Stardew skill icons) ── */
+    /* ── Action grid buttons ── */
     .action-btn {
       background: var(--wood-dark);
       border: 2px solid var(--border-dark);
@@ -131,6 +134,7 @@
       transition: all 0.1s;
       cursor: pointer;
       position: relative;
+      min-height: 72px;   /* ample touch target */
     }
     .action-btn:hover {
       background: var(--wood-light);
@@ -155,7 +159,36 @@
         inset 1px 1px 0 rgba(126,200,80,0.4),
         inset -1px -1px 0 #1a3a0a,
         2px 3px 0 rgba(0,0,0,0.5),
-        0 0 12px rgba(74,138,40,0.3);
+        0 0 14px rgba(74,138,40,0.35);
+    }
+
+    /* ── Character selection (welcome screen) ── */
+    .char-btn {
+      background: var(--wood-mid);
+      border: 3px solid var(--border-dark);
+      box-shadow:
+        inset 2px 2px 0 var(--border-gold),
+        inset -2px -2px 0 #3a2008,
+        4px 4px 0 rgba(0,0,0,0.55);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.13s;
+      position: relative;
+    }
+    .char-btn:hover {
+      border-color: var(--border-gold);
+      transform: translateY(-4px);
+      box-shadow:
+        inset 2px 2px 0 var(--border-gold),
+        inset -2px -2px 0 #3a2008,
+        4px 8px 0 rgba(0,0,0,0.55);
+    }
+    .char-btn:active {
+      transform: translateY(2px);
+      box-shadow:
+        inset 2px 2px 0 #3a2008,
+        inset -2px -2px 0 var(--border-gold),
+        2px 2px 0 rgba(0,0,0,0.4);
     }
 
     /* ── Input ── */
@@ -165,12 +198,13 @@
       box-shadow: inset 2px 2px 4px rgba(0,0,0,0.4), inset 1px 1px 0 #1a0c04;
       color: var(--parchment);
       border-radius: 3px;
-      padding: 11px 14px;
+      padding: 13px 14px;
       width: 100%;
       outline: none;
       font-family: 'Inter', sans-serif;
-      font-size: 0.9rem;
+      font-size: 1rem;
       transition: border-color 0.15s, box-shadow 0.15s;
+      min-height: 48px;
     }
     .burrow-input::placeholder { color: var(--text-dim); }
     .burrow-input:focus {
@@ -185,16 +219,18 @@
       box-shadow: inset 2px 2px 4px rgba(0,0,0,0.4);
       color: var(--parchment-dk);
       border-radius: 3px;
-      padding: 10px 32px 10px 12px;
+      padding: 13px 36px 13px 14px;
       font-size: 0.875rem;
+      font-weight: 500;
       outline: none;
       font-family: 'Inter', sans-serif;
       cursor: pointer;
       appearance: none;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a08858' stroke-width='2' fill='none' stroke-linecap='square'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
-      background-position: right 10px center;
+      background-position: right 12px center;
       transition: border-color 0.15s;
+      min-height: 48px;
     }
     .burrow-select:focus { border-color: var(--green-mid); }
     .burrow-select option { background: #1e1208; }
@@ -202,24 +238,29 @@
     /* ── Primary button ── */
     .btn-primary {
       background: var(--green-dark);
-      border: 2px solid var(--green-dark);
+      border: 2px solid var(--green-mid);
       box-shadow:
         inset 1px 1px 0 rgba(126,200,80,0.35),
         inset -1px -1px 0 #1a3a0a,
         2px 3px 0 rgba(0,0,0,0.5);
       color: var(--parchment);
-      font-family: 'Press Start 2P', monospace;
-      font-size: 0.6rem;
-      letter-spacing: 0.05em;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.875rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
       border-radius: 3px;
-      padding: 12px 20px;
+      padding: 0 22px;
+      min-height: 48px;
       cursor: pointer;
       transition: all 0.1s;
       white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
     .btn-primary:hover {
       background: var(--green-mid);
-      border-color: var(--green-mid);
+      border-color: var(--green-bright);
       box-shadow:
         inset 1px 1px 0 rgba(126,200,80,0.5),
         inset -1px -1px 0 #1a3a0a,
@@ -230,6 +271,7 @@
       transform: translateY(1px);
       box-shadow: inset 2px 2px 0 rgba(0,0,0,0.3), 1px 1px 0 rgba(0,0,0,0.4);
     }
+    .btn-primary.w-full { width: 100%; }
 
     /* ── Priority pills ── */
     .priority-pill {
@@ -237,35 +279,48 @@
       background: var(--wood-dark);
       box-shadow: inset 1px 1px 0 rgba(196,154,47,0.2), 1px 2px 0 rgba(0,0,0,0.4);
       color: var(--text-muted);
-      font-family: 'Press Start 2P', monospace;
-      font-size: 0.45rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
       border-radius: 3px;
-      padding: 8px 4px;
+      padding: 0 6px;
+      min-height: 44px;
       cursor: pointer;
       transition: all 0.1s;
       text-align: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
     }
     .priority-pill:hover { background: var(--wood-light); color: var(--parchment-dk); }
     .priority-pill.p-normal { background: var(--wood-light); border-color: var(--border-mid); color: var(--parchment-dk); }
     .priority-pill.p-high   { background: #3d2800; border-color: #a07020; color: var(--amber); }
     .priority-pill.p-urgent { background: #3d0f0a; border-color: #8b2818; color: #e87060; }
 
-    /* ── Queue item ── */
+    /* ── Quest log items ── */
     .quest-item {
       background: var(--wood-dark);
       border: 2px solid var(--border-dark);
-      box-shadow: inset 1px 1px 0 rgba(196,154,47,0.15), 1px 2px 0 rgba(0,0,0,0.35);
+      border-left-width: 4px;
+      box-shadow: inset 1px 1px 0 rgba(196,154,47,0.12), 1px 2px 0 rgba(0,0,0,0.35);
       border-radius: 3px;
       transition: background 0.15s;
     }
     .quest-item:hover { background: #251408; }
+    .quest-item.p-head   { border-left-color: var(--green-mid); }
+    .quest-item.p-urgent { border-left-color: var(--red-warm); }
+    .quest-item.p-high   { border-left-color: var(--amber); }
+    .quest-item.p-normal { border-left-color: var(--border-dark); }
 
-    /* ── User toggle ── */
+    /* ── User tab toggle ── */
     .user-tab {
-      font-family: 'Press Start 2P', monospace;
-      font-size: 0.5rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 700;
       border-radius: 2px;
-      padding: 8px 12px;
+      padding: 7px 14px;
+      min-height: 36px;
       cursor: pointer;
       border: 2px solid transparent;
       transition: all 0.1s;
@@ -280,16 +335,17 @@
       box-shadow: inset 1px 1px 0 rgba(126,200,80,0.3), 1px 2px 0 rgba(0,0,0,0.4);
     }
 
-    /* ── Section label ── */
+    /* ── Section labels ── */
     .section-label {
-      font-family: 'Press Start 2P', monospace;
-      font-size: 0.45rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.65rem;
+      font-weight: 700;
       color: var(--text-muted);
-      letter-spacing: 0.15em;
+      letter-spacing: 0.2em;
       text-transform: uppercase;
     }
 
-    /* ── Toast ── */
+    /* ── Toast notification ── */
     .toast-box {
       background: var(--wood-mid);
       border: 3px solid var(--border-dark);
@@ -300,7 +356,44 @@
       border-radius: 4px;
     }
 
-    /* ── Safe area ── */
+    /* ── Logout / minor buttons ── */
+    .btn-ghost {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 3px;
+      padding: 4px 10px;
+      min-height: 32px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+    }
+    .btn-ghost:hover {
+      color: var(--text-muted);
+      border-color: var(--border-dark);
+      background: rgba(255,255,255,0.03);
+    }
+
+    /* ── Skeleton shimmer ── */
+    .skeleton {
+      background: linear-gradient(90deg,
+        var(--wood-dark) 25%,
+        #261810 50%,
+        var(--wood-dark) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 2px;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── Safe area helpers ── */
     .pb-safe { padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
     .pt-safe { padding-top: max(0.5rem, env(safe-area-inset-top)); }
 
@@ -310,19 +403,162 @@
     ::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 0; }
 
     /* ── Checkbox ── */
-    input[type="checkbox"] { accent-color: var(--green-mid); }
+    input[type="checkbox"] {
+      accent-color: var(--green-mid);
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    /* ── Welcome screen layout ── */
+    .welcome-screen {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding:
+        max(3rem, env(safe-area-inset-top))
+        1.5rem
+        max(8rem, calc(env(safe-area-inset-bottom) + 6rem));
+      text-align: center;
+    }
   </style>
 </head>
 <body>
 
-<!-- Night sky -->
+<!-- Night sky gradient -->
 <div class="night-sky"></div>
+<!-- Twinkling stars -->
 <div class="stars" id="stars"></div>
+
+<!-- ── Pixel landscape: trees + barn silhouette ── -->
+<div class="landscape-layer">
+  <svg viewBox="0 0 1200 128" xmlns="http://www.w3.org/2000/svg"
+       preserveAspectRatio="xMidYMax slice" width="100%" height="128"
+       style="shape-rendering:crispEdges; display:block">
+
+    <!-- Ground strip -->
+    <rect x="0"    y="112" width="1200" height="16" fill="#060e04"/>
+
+    <!-- ── Tree 1: small, x≈70 ── -->
+    <g fill="#112409">
+      <rect x="62"  y="72"  width="16" height="8"/>
+      <rect x="54"  y="80"  width="32" height="8"/>
+      <rect x="46"  y="88"  width="48" height="8"/>
+      <rect x="54"  y="96"  width="32" height="8"/>
+      <rect x="46"  y="104" width="48" height="8"/>
+      <rect x="62"  y="104" width="16" height="8"/>   <!-- trunk -->
+    </g>
+
+    <!-- ── Tree 2: tall, x≈200 ── -->
+    <g fill="#0d1f08">
+      <rect x="192" y="24"  width="16" height="8"/>
+      <rect x="184" y="32"  width="32" height="8"/>
+      <rect x="176" y="40"  width="48" height="8"/>
+      <rect x="184" y="48"  width="32" height="8"/>
+      <rect x="176" y="56"  width="48" height="8"/>
+      <rect x="184" y="64"  width="32" height="8"/>
+      <rect x="176" y="72"  width="48" height="8"/>
+      <rect x="184" y="80"  width="32" height="8"/>
+      <rect x="176" y="88"  width="48" height="8"/>
+      <rect x="184" y="96"  width="32" height="8"/>
+      <rect x="176" y="104" width="48" height="8"/>
+      <rect x="192" y="104" width="16" height="8"/>   <!-- trunk -->
+    </g>
+
+    <!-- ── Tree 3: medium, x≈340 ── -->
+    <g fill="#112409">
+      <rect x="332" y="48"  width="16" height="8"/>
+      <rect x="324" y="56"  width="32" height="8"/>
+      <rect x="316" y="64"  width="48" height="8"/>
+      <rect x="324" y="72"  width="32" height="8"/>
+      <rect x="316" y="80"  width="48" height="8"/>
+      <rect x="324" y="88"  width="32" height="8"/>
+      <rect x="316" y="96"  width="48" height="8"/>
+      <rect x="332" y="104" width="16" height="8"/>
+    </g>
+
+    <!-- ── Barn, x≈480 ── -->
+    <g>
+      <!-- roof (stepped) -->
+      <rect x="440" y="52"  width="80" height="8"  fill="#1c0e08"/>
+      <rect x="448" y="44"  width="64" height="8"  fill="#180c07"/>
+      <rect x="456" y="36"  width="48" height="8"  fill="#140a06"/>
+      <rect x="464" y="28"  width="32" height="8"  fill="#100806"/>
+      <rect x="472" y="20"  width="16" height="8"  fill="#0e0605"/>
+      <!-- chimney -->
+      <rect x="500" y="10"  width="10" height="20" fill="#1a0e08"/>
+      <!-- body -->
+      <rect x="448" y="60"  width="64" height="52" fill="#180c08"/>
+      <!-- windows -->
+      <rect x="456" y="68"  width="14" height="12" fill="#0a0604"/>
+      <rect x="490" y="68"  width="14" height="12" fill="#0a0604"/>
+      <!-- door (arch) -->
+      <rect x="472" y="84"  width="16" height="28" fill="#080604"/>
+    </g>
+
+    <!-- ── Tree 4: small, x≈640 ── -->
+    <g fill="#112409">
+      <rect x="632" y="72"  width="16" height="8"/>
+      <rect x="624" y="80"  width="32" height="8"/>
+      <rect x="616" y="88"  width="48" height="8"/>
+      <rect x="624" y="96"  width="32" height="8"/>
+      <rect x="616" y="104" width="48" height="8"/>
+      <rect x="632" y="104" width="16" height="8"/>
+    </g>
+
+    <!-- ── Tree 5: tall, x≈760 ── -->
+    <g fill="#0d1f08">
+      <rect x="752" y="32"  width="16" height="8"/>
+      <rect x="744" y="40"  width="32" height="8"/>
+      <rect x="736" y="48"  width="48" height="8"/>
+      <rect x="744" y="56"  width="32" height="8"/>
+      <rect x="736" y="64"  width="48" height="8"/>
+      <rect x="744" y="72"  width="32" height="8"/>
+      <rect x="736" y="80"  width="48" height="8"/>
+      <rect x="744" y="88"  width="32" height="8"/>
+      <rect x="736" y="96"  width="48" height="8"/>
+      <rect x="752" y="104" width="16" height="8"/>
+    </g>
+
+    <!-- ── Tree 6: medium, x≈900 ── -->
+    <g fill="#112409">
+      <rect x="892" y="48"  width="16" height="8"/>
+      <rect x="884" y="56"  width="32" height="8"/>
+      <rect x="876" y="64"  width="48" height="8"/>
+      <rect x="884" y="72"  width="32" height="8"/>
+      <rect x="876" y="80"  width="48" height="8"/>
+      <rect x="884" y="88"  width="32" height="8"/>
+      <rect x="876" y="96"  width="48" height="8"/>
+      <rect x="892" y="104" width="16" height="8"/>
+    </g>
+
+    <!-- ── Tree 7: small, x≈1050 ── -->
+    <g fill="#0d1f08">
+      <rect x="1042" y="64"  width="16" height="8"/>
+      <rect x="1034" y="72"  width="32" height="8"/>
+      <rect x="1026" y="80"  width="48" height="8"/>
+      <rect x="1034" y="88"  width="32" height="8"/>
+      <rect x="1026" y="96"  width="48" height="8"/>
+      <rect x="1042" y="104" width="16" height="8"/>
+    </g>
+
+    <!-- ── Tree 8: small, x≈1160 ── -->
+    <g fill="#112409">
+      <rect x="1152" y="80"  width="16" height="8"/>
+      <rect x="1144" y="88"  width="32" height="8"/>
+      <rect x="1136" y="96"  width="48" height="8"/>
+      <rect x="1144" y="104" width="32" height="8"/>
+      <rect x="1136" y="104" width="48" height="8"/>
+    </g>
+  </svg>
+</div>
 
 <div class="content-layer">
   {% block content %}{% endblock %}
 
-  <!-- Toast notification -->
+  <!-- ── Toast notification ── -->
   <div x-show="toast"
     x-transition:enter="transition ease-out duration-200"
     x-transition:enter-start="opacity-0 translate-y-3"
@@ -331,50 +567,60 @@
     x-transition:leave-start="opacity-100"
     x-transition:leave-end="opacity-0 translate-y-2"
     x-cloak
-    class="toast-box fixed bottom-6 left-4 right-4 max-w-sm mx-auto px-5 py-4 z-50">
+    class="toast-box fixed left-4 right-4 max-w-sm mx-auto px-5 py-4 z-50"
+    style="bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem))">
     <div class="flex items-start gap-3">
-      <span class="text-base shrink-0 mt-0.5">✦</span>
-      <span class="vt-font text-lg leading-snug" style="color:var(--parchment)" x-text="toast"></span>
+      <span class="text-lg shrink-0 leading-none mt-0.5">✦</span>
+      <span class="vt-font text-xl leading-snug" style="color:var(--parchment)" x-text="toast"></span>
     </div>
   </div>
 </div>
 
 <script>
-// Generate stars
-(function() {
-  const container = document.getElementById('stars');
-  const count = 80;
-  for (let i = 0; i < count; i++) {
-    const s = document.createElement('div');
+// ── Generate twinkling stars ──
+(function () {
+  const c = document.getElementById('stars');
+  for (let i = 0; i < 90; i++) {
+    const s   = document.createElement('div');
     s.className = 'star';
-    const size = Math.random() * 2.5 + 0.5;
-    s.style.cssText = `
-      width:${size}px; height:${size}px;
-      top:${Math.random()*70}%;
-      left:${Math.random()*100}%;
-      --dur:${(Math.random()*4+2).toFixed(1)}s;
-      --delay:-${(Math.random()*4).toFixed(1)}s;
-      --min-op:${(Math.random()*0.2+0.05).toFixed(2)};
-      --max-op:${(Math.random()*0.5+0.4).toFixed(2)};
-    `;
-    container.appendChild(s);
+    const sz  = Math.random() * 2.5 + 0.5;
+    s.style.cssText = [
+      `width:${sz}px`, `height:${sz}px`,
+      `top:${(Math.random() * 65).toFixed(1)}%`,
+      `left:${(Math.random() * 100).toFixed(1)}%`,
+      `--dur:${(Math.random() * 4 + 2).toFixed(1)}s`,
+      `--delay:-${(Math.random() * 4).toFixed(1)}s`,
+      `--min-op:${(Math.random() * 0.2 + 0.04).toFixed(2)}`,
+      `--max-op:${(Math.random() * 0.5 + 0.4).toFixed(2)}`,
+    ].join(';');
+    c.appendChild(s);
   }
 })();
 
+// ── Alpine data ──
 function burrow() {
   return {
-    user:       localStorage.getItem('burrow_user') || 'John',
-    priority:   'normal',
-    openPanel:  null,
-    taskBody:   '',
-    taskDomain: '',
-    toast:      null,
+    // null = not logged in (shows welcome screen)
+    user:        localStorage.getItem('burrow_user') || null,
+    priority:    'normal',
+    openPanel:   null,
+    taskBody:    '',
+    taskDomain:  '',
+    toast:       null,
     _toastTimer: null,
 
     setUser(u) {
-      this.user = u;
+      this.user      = u;
+      this.openPanel = null;
       localStorage.setItem('burrow_user', u);
-      if (this.openPanel) this.openPanel = null;
+    },
+
+    logout() {
+      this.user      = null;
+      this.openPanel = null;
+      this.taskBody  = '';
+      this.priority  = 'normal';
+      localStorage.removeItem('burrow_user');
     },
 
     showToast(msg) {
@@ -389,18 +635,17 @@ function burrow() {
       const prefix    = this.priority === 'urgent' ? '!! '
                       : this.priority === 'high'   ? '! ' : '';
       const domPrefix = this.taskDomain ? this.taskDomain + ': ' : '';
-      const payload   = prefix + domPrefix + body;
-      const res = await fetch('/api/task', {
+      const res       = await fetch('/api/task', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ body: payload, user: this.user }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: prefix + domPrefix + body, user: this.user }),
       });
       const data = await res.json();
       if (data.ticket_id) {
         this.showToast('★ Added: ' + data.enhanced);
-        this.taskBody = '';
+        this.taskBody  = '';
         this.taskDomain = '';
-        this.priority = 'normal';
+        this.priority  = 'normal';
         htmx.trigger('#queue-list', 'refresh');
       } else {
         this.showToast('✗ ' + (data.error || 'something went wrong'));
@@ -408,23 +653,25 @@ function burrow() {
     },
 
     async fireAction(actionId, payload) {
-      const res = await fetch('/api/quick-action', {
+      const res  = await fetch('/api/quick-action', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ action_id: actionId, user: this.user,
-                               priority: this.priority, ...payload }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action_id: actionId, user: this.user,
+          priority: this.priority, ...payload,
+        }),
       });
       const data = await res.json();
       if (data.ticket_id) {
         this.showToast('★ Added: ' + data.enhanced);
         this.openPanel = null;
-        this.priority = 'normal';
+        this.priority  = 'normal';
         htmx.trigger('#queue-list', 'refresh');
       } else {
         this.showToast('✗ ' + (data.error || 'something went wrong'));
       }
     },
-  }
+  };
 }
 
 if ('serviceWorker' in navigator) {

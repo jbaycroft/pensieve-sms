@@ -1,14 +1,19 @@
 {% if tickets %}
   {% for t in tickets %}
-  <div class="quest-item flex items-start gap-3 px-4 py-3 mb-2">
-    <!-- Priority/index indicator -->
-    <div class="shrink-0 w-6 text-center pt-0.5">
+  <div class="quest-item flex items-start gap-3 px-4 py-3 mb-2
+    {%- if loop.first %} p-head
+    {%- elif t.priority in ('critical','urgent') %} p-urgent
+    {%- elif t.priority == 'high' %} p-high
+    {%- else %} p-normal{%- endif %}">
+
+    <!-- Priority indicator -->
+    <div class="shrink-0 w-6 text-center" style="padding-top:2px">
       {% if loop.first %}
-        <span class="vt-font text-2xl" style="color:var(--amber)">★</span>
+        <span class="vt-font text-2xl" style="color:var(--green-bright)">★</span>
       {% elif t.priority in ('critical','urgent') %}
         <span class="vt-font text-2xl" style="color:#e87060">‼</span>
       {% elif t.priority == 'high' %}
-        <span class="vt-font text-2xl" style="color:var(--amber)">!</span>
+        <span class="vt-font text-xl" style="color:var(--amber)">!</span>
       {% else %}
         <span class="vt-font text-xl" style="color:var(--text-dim)">{{ loop.index }}</span>
       {% endif %}
@@ -16,28 +21,49 @@
 
     <!-- Task body -->
     <div class="flex-1 min-w-0">
-      <div class="text-sm font-medium leading-snug mb-1" style="color:var(--parchment)">{{ t.title }}</div>
-      <div class="vt-font text-base" style="color:var(--text-dim)">
-        {{ t.domain }}{% if t.est_min %} · {{ t.est_min }} min{% endif %}
+      <div style="font-family:'Inter',sans-serif; font-size:0.875rem; font-weight:500;
+                  color:var(--parchment); line-height:1.4; margin-bottom:4px">
+        {{ t.title }}
+      </div>
+      <div class="flex items-center gap-2 flex-wrap">
+        {% if t.domain %}
+        <span style="font-family:'Inter',sans-serif; font-size:0.68rem; font-weight:600;
+                     color:var(--text-dim);
+                     background:rgba(196,154,47,0.08);
+                     border:1px solid rgba(196,154,47,0.18);
+                     padding:1px 7px; border-radius:2px">{{ t.domain }}</span>
+        {% endif %}
+        {% if t.est_min %}
+        <span class="vt-font" style="font-size:1.05rem; color:var(--text-dim)">{{ t.est_min }}m</span>
+        {% endif %}
         {% if t.status == 'active' %}
-          <span style="color:var(--green-bright)"> ● active</span>
+        <span style="font-family:'Inter',sans-serif; font-size:0.68rem; font-weight:700;
+                     color:var(--green-bright)">● active</span>
         {% endif %}
       </div>
     </div>
 
-    <!-- HEAD badge -->
+    <!-- HEAD badge (first item in queue) -->
     {% if loop.first %}
-    <span class="pixel-font shrink-0 px-2 py-1 rounded"
-      style="font-size:0.4rem; background:rgba(126,200,80,0.12); border:1px solid rgba(126,200,80,0.3); color:var(--green-bright)">
+    <span class="shrink-0"
+      style="font-family:'Inter',sans-serif; font-size:0.62rem; font-weight:700;
+             background:rgba(126,200,80,0.1);
+             border:1px solid rgba(126,200,80,0.3);
+             color:var(--green-bright);
+             padding:2px 8px; border-radius:2px;
+             white-space:nowrap; align-self:center">
       HEAD
     </span>
     {% endif %}
   </div>
   {% endfor %}
+
 {% else %}
+  <!-- Empty state -->
   <div class="pixel-panel p-8 text-center">
-    <div class="text-3xl mb-3">🌱</div>
-    <div class="pixel-font" style="font-size:0.45rem; color:var(--text-dim)">Quest log is empty.</div>
-    <div class="vt-font text-lg mt-2" style="color:var(--text-dim)">Enjoy the day!</div>
+    <div class="text-5xl mb-4" style="filter:drop-shadow(0 2px 6px rgba(0,0,0,0.5))">🌱</div>
+    <div style="font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600;
+                color:var(--text-dim); margin-bottom:8px">Quest log is empty.</div>
+    <div class="vt-font text-xl" style="color:var(--text-dim)">Enjoy the day!</div>
   </div>
 {% endif %}

@@ -1,115 +1,296 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="max-w-lg mx-auto px-4 pt-safe pt-6 pb-32" x-data="burrow()">
+<div x-data="burrow()">
 
-  <!-- ── Header ── -->
-  <div class="flex items-start justify-between mb-6">
-    <div>
-      <h1 class="pixel-font text-sm mb-2" style="color:var(--amber); text-shadow: 2px 2px 0 rgba(0,0,0,0.6);">
-        ⌂ The Burrow
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- WELCOME SCREEN — shown when no user is selected           -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <div x-show="user === null"
+       x-transition:enter="transition ease-out duration-300"
+       x-transition:enter-start="opacity-0 scale-95"
+       x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition ease-in duration-200"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       x-cloak
+       class="welcome-screen">
+
+    <!-- Logo + domain -->
+    <div class="mb-10">
+      <div class="text-6xl mb-5" style="filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6))">🏡</div>
+      <h1 class="pixel-font mb-3"
+          style="font-size:1rem; color:var(--amber); text-shadow:2px 2px 0 rgba(0,0,0,0.7); line-height:1.6">
+        The Burrow
       </h1>
-      <p class="vt-font text-xl" style="color:var(--text-muted)">
-        <span x-text="user === 'John' ? '✦ Morning, John.' : '✦ Hey Jeannie!'"></span>
+      <p class="vt-font text-2xl" style="color:var(--text-muted); letter-spacing:0.05em">
+        theburrow.house
+      </p>
+      <p class="vt-font text-xl mt-3" style="color:var(--text-dim)">
+        ✦ &nbsp;Who's home tonight?&nbsp; ✦
       </p>
     </div>
 
-    <!-- User toggle -->
-    <div class="pixel-panel-sm flex p-1 gap-1 mt-1">
-      <button @click="setUser('John')"
-        :class="user==='John' ? 'user-tab active' : 'user-tab'">John</button>
-      <button @click="setUser('Jeannie')"
-        :class="user==='Jeannie' ? 'user-tab active' : 'user-tab'">Jeannie</button>
+    <!-- Character selection cards -->
+    <div class="flex gap-5 justify-center" style="width:100%; max-width:320px">
+
+      <!-- ── John ── -->
+      <button @click="setUser('John')" class="char-btn flex-1 p-5 flex flex-col items-center gap-4">
+        <!-- Pixel westie (facing right) -->
+        <svg viewBox="0 0 60 84" width="72" height="100"
+             xmlns="http://www.w3.org/2000/svg"
+             style="shape-rendering:crispEdges; overflow:visible">
+          <!-- ears (slightly warm beige) -->
+          <rect x="6"  y="0"  width="12" height="12" fill="#cfc5a8"/>
+          <rect x="42" y="0"  width="12" height="12" fill="#cfc5a8"/>
+          <!-- head top -->
+          <rect x="6"  y="6"  width="48" height="6"  fill="#e8e0cc"/>
+          <!-- head rows 2-4 -->
+          <rect x="0"  y="12" width="60" height="18" fill="#e8e0cc"/>
+          <!-- eyes (dark dots) -->
+          <rect x="12" y="18" width="6"  height="6"  fill="#1e1208"/>
+          <rect x="42" y="18" width="6"  height="6"  fill="#1e1208"/>
+          <!-- eye glint -->
+          <rect x="14" y="18" width="2"  height="2"  fill="#ffffff"/>
+          <rect x="44" y="18" width="2"  height="2"  fill="#ffffff"/>
+          <!-- lower head / muzzle -->
+          <rect x="0"  y="30" width="60" height="6"  fill="#e8e0cc"/>
+          <!-- nose -->
+          <rect x="22" y="32" width="16" height="6"  fill="#1e1208"/>
+          <rect x="26" y="30" width="8"  height="4"  fill="#2d1a10"/>
+          <!-- chin / muzzle lower -->
+          <rect x="6"  y="36" width="48" height="6"  fill="#e0d8be"/>
+          <!-- neck -->
+          <rect x="14" y="42" width="32" height="6"  fill="#e8e0cc"/>
+          <!-- body -->
+          <rect x="4"  y="48" width="52" height="20" fill="#e8e0cc"/>
+          <!-- body texture / fluff -->
+          <rect x="4"  y="52" width="52" height="4"  fill="#ddd5be"/>
+          <!-- tail (pixel blob upper right) -->
+          <rect x="52" y="44" width="8"  height="8"  fill="#e0d8be"/>
+          <!-- legs (front-left, front-right, back-left, back-right) -->
+          <rect x="4"  y="68" width="12" height="16" fill="#e0d8be"/>
+          <rect x="20" y="68" width="12" height="16" fill="#e0d8be"/>
+          <rect x="36" y="68" width="12" height="16" fill="#e0d8be"/>
+          <rect x="52" y="68" width="8"  height="16" fill="#e0d8be"/>
+          <!-- paw pads -->
+          <rect x="6"  y="80" width="8"  height="4"  fill="#c8bfaa"/>
+          <rect x="22" y="80" width="8"  height="4"  fill="#c8bfaa"/>
+          <rect x="38" y="80" width="8"  height="4"  fill="#c8bfaa"/>
+          <rect x="52" y="80" width="6"  height="4"  fill="#c8bfaa"/>
+        </svg>
+        <span class="vt-font text-3xl" style="color:var(--parchment); line-height:1">John</span>
+      </button>
+
+      <!-- ── Jeannie ── -->
+      <button @click="setUser('Jeannie')" class="char-btn flex-1 p-5 flex flex-col items-center gap-4">
+        <!-- Pixel westie with bow -->
+        <svg viewBox="0 0 60 84" width="72" height="100"
+             xmlns="http://www.w3.org/2000/svg"
+             style="shape-rendering:crispEdges; overflow:visible">
+          <!-- bow (right ear, red ribbon) -->
+          <rect x="36" y="-8" width="8"  height="6"  fill="#c43828"/>
+          <rect x="44" y="-8" width="8"  height="6"  fill="#e05040"/>
+          <rect x="52" y="-8" width="8"  height="6"  fill="#c43828"/>
+          <rect x="42" y="-6" width="6"  height="4"  fill="#8b1820"/>
+          <!-- ears -->
+          <rect x="6"  y="0"  width="12" height="12" fill="#cfc5a8"/>
+          <rect x="42" y="0"  width="12" height="12" fill="#cfc5a8"/>
+          <!-- head top -->
+          <rect x="6"  y="6"  width="48" height="6"  fill="#ece4d0"/>
+          <!-- head rows -->
+          <rect x="0"  y="12" width="60" height="18" fill="#ece4d0"/>
+          <!-- eyes -->
+          <rect x="12" y="18" width="6"  height="6"  fill="#1e1208"/>
+          <rect x="42" y="18" width="6"  height="6"  fill="#1e1208"/>
+          <!-- eye glint -->
+          <rect x="14" y="18" width="2"  height="2"  fill="#ffffff"/>
+          <rect x="44" y="18" width="2"  height="2"  fill="#ffffff"/>
+          <!-- lashes (tiny pixels above eyes for Jeannie) -->
+          <rect x="12" y="16" width="2"  height="2"  fill="#1e1208"/>
+          <rect x="16" y="16" width="2"  height="2"  fill="#1e1208"/>
+          <rect x="42" y="16" width="2"  height="2"  fill="#1e1208"/>
+          <rect x="46" y="16" width="2"  height="2"  fill="#1e1208"/>
+          <!-- lower head -->
+          <rect x="0"  y="30" width="60" height="6"  fill="#ece4d0"/>
+          <!-- nose -->
+          <rect x="22" y="32" width="16" height="6"  fill="#1e1208"/>
+          <rect x="26" y="30" width="8"  height="4"  fill="#2d1a10"/>
+          <!-- chin -->
+          <rect x="6"  y="36" width="48" height="6"  fill="#e4dcc2"/>
+          <!-- neck -->
+          <rect x="14" y="42" width="32" height="6"  fill="#ece4d0"/>
+          <!-- body -->
+          <rect x="4"  y="48" width="52" height="20" fill="#ece4d0"/>
+          <rect x="4"  y="52" width="52" height="4"  fill="#e0d8c0"/>
+          <!-- collar (small band) -->
+          <rect x="12" y="42" width="36" height="4"  fill="#c43828"/>
+          <rect x="24" y="42" width="12" height="4"  fill="#e05040"/>
+          <!-- tail -->
+          <rect x="52" y="44" width="8"  height="8"  fill="#e4dcc2"/>
+          <!-- legs -->
+          <rect x="4"  y="68" width="12" height="16" fill="#e4dcc2"/>
+          <rect x="20" y="68" width="12" height="16" fill="#e4dcc2"/>
+          <rect x="36" y="68" width="12" height="16" fill="#e4dcc2"/>
+          <rect x="52" y="68" width="8"  height="16" fill="#e4dcc2"/>
+          <!-- paw pads -->
+          <rect x="6"  y="80" width="8"  height="4"  fill="#c8bfaa"/>
+          <rect x="22" y="80" width="8"  height="4"  fill="#c8bfaa"/>
+          <rect x="38" y="80" width="8"  height="4"  fill="#c8bfaa"/>
+          <rect x="52" y="80" width="6"  height="4"  fill="#c8bfaa"/>
+        </svg>
+        <span class="vt-font text-3xl" style="color:var(--parchment); line-height:1">Jeannie</span>
+      </button>
     </div>
+
+    <!-- Flavor footer -->
+    <p class="vt-font text-lg mt-12" style="color:var(--text-dim)">
+      ★ &nbsp;your household quest log&nbsp; ★
+    </p>
   </div>
 
-  <!-- ── Quick action grid ── -->
-  <div class="mb-2">
-    <div class="section-label mb-3">⚡ Quick Actions</div>
-    <div class="grid grid-cols-3 gap-3">
-      {% for action in actions %}
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <!-- MAIN APP — shown when a user is selected                  -->
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <div x-show="user !== null"
+       x-transition:enter="transition ease-out duration-300"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-cloak
+       class="max-w-lg mx-auto px-4 pt-safe pb-32"
+       style="padding-top: max(1.5rem, env(safe-area-inset-top))">
+
+    <!-- ── Header ── -->
+    <div class="flex items-start justify-between mb-6">
+      <div>
+        <h1 class="pixel-font mb-2"
+            style="font-size:0.875rem; color:var(--amber); text-shadow:2px 2px 0 rgba(0,0,0,0.6); line-height:1.6">
+          ⌂ The Burrow
+        </h1>
+        <p class="vt-font text-2xl" style="color:var(--text-muted)">
+          <span x-text="user === 'John' ? '✦ Morning, John.' : '✦ Hey Jeannie!'"></span>
+        </p>
+      </div>
+
+      <!-- User switcher + leave -->
+      <div class="flex flex-col items-end gap-2 mt-1 shrink-0 ml-3">
+        <div class="pixel-panel-sm flex p-1 gap-1">
+          <button @click="setUser('John')"
+            :class="user==='John' ? 'user-tab active' : 'user-tab'">John</button>
+          <button @click="setUser('Jeannie')"
+            :class="user==='Jeannie' ? 'user-tab active' : 'user-tab'">Jeannie</button>
+        </div>
+        <button @click="logout()" class="btn-ghost">← leave</button>
+      </div>
+    </div>
+
+    <!-- ── Quick Actions grid ── -->
+    <div class="mb-2">
+      <div class="section-label mb-3">⚡ Quick Actions</div>
+      <div class="grid grid-cols-3 gap-3">
+        {% for action in actions %}
+        <button
+          @click="openPanel = (openPanel === '{{ action.id }}') ? null : '{{ action.id }}'"
+          :class="openPanel === '{{ action.id }}' ? 'action-btn active' : 'action-btn'"
+          class="p-3 text-center select-none flex flex-col items-center justify-center gap-1.5">
+          <div class="text-3xl leading-none">{{ action.icon }}</div>
+          <div style="font-family:'Inter',sans-serif; font-size:0.7rem; font-weight:600;
+                      color:var(--parchment-dk); white-space:nowrap; overflow:hidden;
+                      text-overflow:ellipsis; max-width:100%">{{ action.label }}</div>
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- ── Action panels (HTMX loaded) ── -->
+    {% for action in actions %}
+    <div
+      x-show="openPanel === '{{ action.id }}'"
+      x-cloak
+      x-transition:enter="transition ease-out duration-150"
+      x-transition:enter-start="opacity-0 -translate-y-2"
+      x-transition:enter-end="opacity-100 translate-y-0"
+      x-transition:leave="transition ease-in duration-100"
+      x-transition:leave-start="opacity-100"
+      x-transition:leave-end="opacity-0"
+      x-effect="if (openPanel === '{{ action.id }}') htmx.ajax('GET', '/api/action-panel/{{ action.id }}?user=' + user, {target: '#panel-{{ action.id }}', swap: 'innerHTML'})"
+      class="my-3">
+      <div id="panel-{{ action.id }}" class="pixel-panel p-5">
+        <div class="vt-font text-xl text-center" style="color:var(--text-dim)">Loading…</div>
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- ── Priority selector ── -->
+    <div class="mt-5 mb-3">
+      <div class="section-label mb-3">⚠ Priority</div>
+      <div class="grid grid-cols-3 gap-2">
+        {% for label, val, icon in [('Normal','normal','⚪'),('High','high','★'),('Urgent','urgent','‼')] %}
+        <button @click="priority = '{{ val }}'"
+          :class="{
+            'priority-pill p-normal': priority === '{{ val }}' && '{{ val }}' === 'normal',
+            'priority-pill p-high':   priority === '{{ val }}' && '{{ val }}' === 'high',
+            'priority-pill p-urgent': priority === '{{ val }}' && '{{ val }}' === 'urgent',
+            'priority-pill':          priority !== '{{ val }}'
+          }">
+          <span>{{ icon }}</span><span>{{ label }}</span>
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- ── Free-form task entry ── -->
+    <div class="pixel-panel p-4 mb-6">
+      <div class="section-label mb-3">✎ Add Task</div>
+      <input type="text"
+        x-model="taskBody"
+        @keydown.enter="submitTask()"
+        placeholder="What needs doing?"
+        autocomplete="off"
+        inputmode="text"
+        class="burrow-input mb-3">
+      <div class="flex gap-2">
+        <select x-model="taskDomain" class="burrow-select flex-1">
+          <option value="">Domain: auto</option>
+          <option value="w">Work</option>
+          <option value="h">Hydroponics</option>
+          <option value="p">Property</option>
+          <option value="f">Physical</option>
+          <option value="ho">Hobby</option>
+          <option value="c">Connection</option>
+        </select>
+        <button @click="submitTask()" class="btn-primary">Queue it</button>
+      </div>
+    </div>
+
+    <!-- ── Quest Log ── -->
+    <div class="flex items-center justify-between mb-3">
+      <div class="section-label">📜 Quest Log</div>
       <button
-        @click="openPanel = (openPanel === '{{ action.id }}') ? null : '{{ action.id }}'"
-        :class="openPanel === '{{ action.id }}' ? 'action-btn active' : 'action-btn'"
-        class="p-4 text-center select-none">
-        <div class="text-3xl mb-2 leading-none">{{ action.icon }}</div>
-        <div class="pixel-font truncate" style="font-size:0.42rem; color:var(--parchment-dk)">{{ action.label }}</div>
-      </button>
-      {% endfor %}
+        hx-get="/api/queue"
+        hx-target="#queue-list"
+        hx-swap="innerHTML"
+        class="btn-ghost">↺ refresh</button>
     </div>
-  </div>
 
-  <!-- ── Action panels (HTMX) ── -->
-  {% for action in actions %}
-  <div
-    x-show="openPanel === '{{ action.id }}'"
-    x-cloak
-    x-transition:enter="transition ease-out duration-150"
-    x-transition:enter-start="opacity-0 -translate-y-2"
-    x-transition:enter-end="opacity-100 translate-y-0"
-    x-transition:leave="transition ease-in duration-100"
-    x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0"
-    x-effect="if (openPanel === '{{ action.id }}') htmx.ajax('GET', '/api/action-panel/{{ action.id }}?user=' + user, {target: '#panel-{{ action.id }}', swap: 'innerHTML'})"
-    class="my-4">
-    <div id="panel-{{ action.id }}" class="pixel-panel p-5">
-      <div class="vt-font text-xl text-center" style="color:var(--text-dim)">Loading…</div>
+    <!-- Queue list — HTMX loads partials/queue.html -->
+    <div id="queue-list"
+         hx-get="/api/queue"
+         hx-trigger="load, refresh"
+         hx-swap="innerHTML">
+      <!-- Skeleton while loading -->
+      <div class="space-y-2">
+        {% for _ in range(3) %}
+        <div class="quest-item p-normal flex gap-3 px-4 py-4">
+          <div class="skeleton w-5 h-5 shrink-0 mt-0.5"></div>
+          <div class="flex-1 space-y-2">
+            <div class="skeleton h-4 rounded" style="width:{{ [55,70,80][loop.index0] }}%"></div>
+            <div class="skeleton h-3 rounded" style="width:{{ [30,40,25][loop.index0] }}%"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
     </div>
-  </div>
-  {% endfor %}
 
-  <!-- ── Priority selector ── -->
-  <div class="mt-5 mb-3">
-    <div class="section-label mb-3">⚠ Priority</div>
-    <div class="grid grid-cols-3 gap-2">
-      {% for label, val, icon in [('Normal','normal','⚪'),('High','high','★'),('Urgent','urgent','‼')] %}
-      <button @click="priority = '{{ val }}'"
-        :class="{
-          'priority-pill p-normal': priority === '{{ val }}' && '{{ val }}' === 'normal',
-          'priority-pill p-high':   priority === '{{ val }}' && '{{ val }}' === 'high',
-          'priority-pill p-urgent': priority === '{{ val }}' && '{{ val }}' === 'urgent',
-          'priority-pill': priority !== '{{ val }}'
-        }">
-        {{ icon }} {{ label }}
-      </button>
-      {% endfor %}
-    </div>
-  </div>
-
-  <!-- ── Free-form task input ── -->
-  <div class="pixel-panel p-4 mb-6">
-    <div class="section-label mb-3">✎ Add Task</div>
-    <input type="text" x-model="taskBody"
-      @keydown.enter="submitTask()"
-      placeholder="What needs doing?"
-      class="burrow-input mb-3">
-    <div class="flex gap-2">
-      <select x-model="taskDomain" class="burrow-select flex-1">
-        <option value="">Domain: auto</option>
-        <option value="w">Work</option>
-        <option value="h">Hydroponics</option>
-        <option value="p">Property</option>
-        <option value="f">Physical</option>
-        <option value="ho">Hobby</option>
-        <option value="c">Connection</option>
-      </select>
-      <button @click="submitTask()" class="btn-primary">Queue it</button>
-    </div>
-  </div>
-
-  <!-- ── Quest log (queue) ── -->
-  <div class="flex items-center justify-between mb-3">
-    <div class="section-label">📜 Quest Log</div>
-    <button hx-get="/api/queue" hx-target="#queue-list" hx-swap="innerHTML"
-      class="pixel-font transition-all hover:opacity-80 active:scale-90"
-      style="font-size:0.5rem; color:var(--text-muted)">↺ refresh</button>
-  </div>
-
-  <div id="queue-list"
-       hx-get="/api/queue"
-       hx-trigger="load, refresh"
-       hx-swap="innerHTML">
-    <div class="vt-font text-xl text-center py-8" style="color:var(--text-dim)">Loading…</div>
-  </div>
-
-</div>
+  </div><!-- /main app -->
+</div><!-- /x-data -->
 {% endblock %}
