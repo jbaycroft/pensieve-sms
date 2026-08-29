@@ -1,624 +1,197 @@
 #!/usr/bin/env bash
-# ============================================================
-#   The Burrow — end-to-end Arch Linux installer (hardened)
-#   theburrow.house · pensieve-sms · 2026
-# ============================================================
+# â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
+# â•‘          The Burrow â€” end-to-end Arch Linux installer           â•‘
+# â•‘          theburrow.house  Â·  pensieve-sms  Â·  2026              â•‘
+# â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 #
 # Run as your regular user (sudo called as needed).
-# Safe to re-run — idempotent throughout.
-# If a step fails, fix the issue and re-run; it resumes
-# from the last completed checkpoint.
-#
-# Hardening notes vs. original:
-#   - Checkpoint/resume: saves step number on success
-#   - Error trap: shows line, tells user to re-run
-#   - Detects 'python' vs 'python3' (Arch uses 'python')
-#   - SSH clone with HTTPS fallback
-#   - cloudflared: dynamic ExecStart path after install
-#   - Validates Twilio + Cloudflare creds before writing
-#   - pip install with retry (3 attempts)
-#   - Skips nsswitch.conf if systemd-resolved manages DNS
-#   - avahi: guards against double-enable
-#   - Flask health check with 10-attempt retry
-#   - vault structure verified before flask starts
+# Everything is handled. Just answer the prompts.
+set -euo pipefail
 
-# ── strict mode (controlled) ─────────────────────────────────
-set -uo pipefail
-# We do NOT use -e globally; individual commands use || die.
-# This gives us more granular control without surprise exits.
-
-# ── colours & helpers ─────────────────────────────────────────
+# â”€â”€ colours & helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 GRN='\033[0;32m'; YLW='\033[1;33m'; BLU='\033[0;34m'
 RED='\033[0;31m'; CYN='\033[0;36m'; NC='\033[0m'
-
-hdr()  { echo -e "\n${BLU}──────────────────────────────────────────────────${NC}"; echo -e "${BLU}  $1${NC}"; echo -e "${BLU}──────────────────────────────────────────────────${NC}"; }
-ok()   { echo -e "  ${GRN}✓${NC}  $1"; }
+hdr()  { echo -e "\n${BLU}â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”${NC}"; echo -e "${BLU}  $1${NC}"; echo -e "${BLU}â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”${NC}"; }
+ok()   { echo -e "  ${GRN}âœ“${NC}  $1"; }
 warn() { echo -e "  ${YLW}!${NC}  $1"; }
-info() { echo -e "  ${CYN}→${NC}  $1"; }
-die()  { echo -e "\n  ${RED}✗  ERROR: $1${NC}"; echo -e "  ${YLW}Re-run this script after fixing the issue.${NC}\n"; save_checkpoint "$CURRENT_STEP"; exit 1; }
+info() { echo -e "  ${CYN}â†’${NC}  $1"; }
+die()  { echo -e "\n  ${RED}âœ—  ERROR: $1${NC}\n"; exit 1; }
 
-# ── checkpoint system ─────────────────────────────────────────
-CHECKPOINT_FILE="$HOME/.pensieve-install-checkpoint"
-CURRENT_STEP=0
-
-save_checkpoint() {
-  echo "${1:-$CURRENT_STEP}" > "$CHECKPOINT_FILE"
+ask() {
+  local var="$1" desc="$2" ex="${3:-}"
+  echo -e "\n  ${YLW}${desc}${NC}"
+  [[ -n "$ex" ]] && echo -e "  ${CYN}Example: ${ex}${NC}"
+  read -r -p "  â–¶ " val
+  [[ -z "$val" ]] && die "Value required for ${var}"
+  printf '%s=%s\n' "$var" "$val"
 }
 
-get_checkpoint() {
-  [[ -f "$CHECKPOINT_FILE" ]] && cat "$CHECKPOINT_FILE" || echo "0"
+ask_val() {
+  # Like ask but returns raw value into a variable, not KEY=VAL
+  local _desc="$1" _ex="${2:-}" _ret
+  echo -e "\n  ${YLW}${_desc}${NC}"
+  [[ -n "$_ex" ]] && echo -e "  ${CYN}Example: ${_ex}${NC}"
+  read -r -p "  â–¶ " _ret
+  echo "$_ret"
 }
 
-step_done() {
-  CURRENT_STEP="$1"
-  save_checkpoint "$CURRENT_STEP"
-  ok "Step $1 complete"
-}
-
-RESUME_FROM=$(get_checkpoint)
-
-should_run() {
-  # Returns 0 (run) if step > RESUME_FROM, 1 (skip) otherwise
-  [[ "$1" -gt "$RESUME_FROM" ]]
-}
-
-# ── constants ─────────────────────────────────────────────────
-REPO_DIR="$HOME/pensieve-sms"
+# Detect repo root from script location — works regardless of where it was cloned
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ENV_FILE="/etc/pensieve.env"
 TUNNEL_NAME="theburrow"
 DOMAIN="theburrow.house"
 HUB_HOST="hub.${DOMAIN}"
 SMS_HOST="sms.${DOMAIN}"
 
-# ── pre-initialise variables used across steps ────────────────
-# Prevents set -u from firing if a step is skipped on resume.
-PYTHON=""
-CF_BIN=""
-# Credential vars — populated in step 6, re-checked in step 7 + 10
-SID=""; TOKEN=""; FROM=""; ALLOWLIST=""; JEANNIE=""; GEMINI=""; VAULT=""
-CF_ACCOUNT_ID=""; CF_API_TOKEN=""; JOHN_EMAIL=""; JEANNIE_EMAIL=""
-
-# ── banner ────────────────────────────────────────────────────
+# â”€â”€ banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 echo ""
-echo -e "${BLU}╔═══════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLU}║          The Burrow — end-to-end installer            ║${NC}"
-echo -e "${BLU}║          theburrow.house · pensieve-sms               ║${NC}"
-echo -e "${BLU}╚═══════════════════════════════════════════════════════╝${NC}"
+echo -e "${BLU}â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—${NC}"
+echo -e "${BLU}â•‘          The Burrow â€” end-to-end installer                  â•‘${NC}"
+echo -e "${BLU}â•‘          theburrow.house  Â·  pensieve-sms                   â•‘${NC}"
+echo -e "${BLU}â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
 echo ""
-
-if [[ "$RESUME_FROM" -gt "0" ]]; then
-  warn "Resuming from step $RESUME_FROM (last successful step)."
-  warn "Delete ${CHECKPOINT_FILE} to start fresh."
-  echo ""
-fi
-
-echo "  Steps:"
-echo "    1.  System check"
-echo "    2.  Dependencies (python, git, avahi, cloudflared)"
-echo "    3.  Hostname + mDNS"
-echo "    4.  Repo clone/update"
-echo "    5.  Python virtualenv + deps"
-echo "    6.  Credentials"
-echo "    7.  /etc/pensieve.env"
-echo "    8.  Flask systemd service"
-echo "    9.  Cloudflare tunnel"
-echo "    10. Cloudflare Access + Twilio webhook"
+echo "  This script will configure everything:"
 echo ""
-read -r -p "  Press Enter to begin…"
+echo "    1.  System dependencies (python, git, avahi, cloudflared)"
+echo "    2.  Hostname â†’ pensieve  (local access: pensieve.local)"
+echo "    3.  Clone pensieve-sms repo"
+echo "    4.  Python virtualenv + dependencies"
+echo "    5.  Collect all credentials"
+echo "    6.  Write /etc/pensieve.env (mode 600)"
+echo "    7.  Flask systemd service"
+echo "    8.  Cloudflare named tunnel"
+echo "         hub.theburrow.house  â†’ PWA (Cloudflare Access / Google Auth)"
+echo "         sms.theburrow.house  â†’ Twilio webhook (open)"
+echo "    9.  Cloudflare Access policy (hub only)"
+echo "    10. Verification + final summary"
+echo ""
+read -r -p "  Press Enter to beginâ€¦"
 
-# ═══════════════════════════════════════════════════
-# STEP 1 — system check
-# ═══════════════════════════════════════════════════
-hdr "Step 1/10 — System check"
-
+# â”€â”€ 1. system check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+hdr "Step 1/10 â€” System check"
 [[ "$(id -u)" -eq 0 ]] && die "Run as a regular user, not root."
+[[ -f /etc/arch-release ]] || warn "Not detected as Arch â€” continuing anyway."
+ping -c1 -W3 8.8.8.8 &>/dev/null || die "No internet connectivity."
+ok "Running as ${USER} with internet access"
 
-if [[ -f /etc/arch-release ]]; then
-  ok "Arch Linux detected"
+# â”€â”€ 2. system dependencies â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+hdr "Step 2/10 â€” System dependencies"
+sudo pacman -Syu --needed --noconfirm \
+  git curl python python-pip avahi nss-mdns \
+  2>&1 | grep -E '(installing|upgrading|nothing to do|error)' || true
+ok "Core packages ready"
+
+# cloudflared â€” try yay/paru first, then direct binary
+if ! command -v cloudflared &>/dev/null; then
+  echo "  Installing cloudflaredâ€¦"
+  if command -v yay &>/dev/null; then
+    yay -S --noconfirm --aur cloudflared
+  elif command -v paru &>/dev/null; then
+    paru -S --noconfirm cloudflared
+  else
+    CFVER=$(curl -s https://api.github.com/repos/cloudflare/cloudflared/releases/latest \
+      | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])" 2>/dev/null)
+    [[ -z "$CFVER" ]] && die "Could not fetch cloudflared version"
+    curl -sL "https://github.com/cloudflare/cloudflared/releases/download/${CFVER}/cloudflared-linux-amd64" \
+      -o /tmp/cloudflared
+    sudo install -m 755 /tmp/cloudflared /usr/local/bin/cloudflared
+    ok "cloudflared ${CFVER} installed from binary"
+  fi
+fi
+ok "cloudflared $(cloudflared --version | head -1)"
+CF_BIN=$(command -v cloudflared)
+
+# â”€â”€ 3. hostname + mDNS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+hdr "Step 3/10 â€” Hostname + mDNS (pensieve.local)"
+_current_host=$(hostnamectl --static 2>/dev/null || hostname)
+if [[ "$_current_host" != "pensieve" ]]; then
+  echo -e "\n  ${YLW}Current hostname is '${_current_host}'. Rename to 'pensieve'? [Y/n]${NC}"
+  read -r -p "  \u25b6 " _yn
+  if [[ ! "$_yn" =~ ^[Nn] ]]; then
+    sudo hostnamectl set-hostname pensieve
+    ok "Hostname set to: pensieve"
+  else
+    warn "Skipping hostname rename — pensieve.local mDNS may not resolve correctly"
+  fi
 else
-  warn "Not Arch Linux — continuing anyway (package names may differ)"
+  ok "Hostname already set to: pensieve"
 fi
 
-ping -c1 -W3 8.8.8.8 &>/dev/null || die "No internet. Check your connection."
-ok "Internet: OK"
-
-command -v sudo &>/dev/null || die "sudo not found. Install it: pacman -S sudo"
-command -v curl &>/dev/null || die "curl not found. Install: sudo pacman -S curl"
-
-# Pacman database lock — left behind by interrupted installs
-if [[ -f /var/lib/pacman/db.lck ]]; then
-  die "pacman database is locked (/var/lib/pacman/db.lck). If no pacman process is running, remove it: sudo rm /var/lib/pacman/db.lck"
+# Enable mDNS resolution
+if ! grep -q 'mdns4_minimal' /etc/nsswitch.conf; then
+  sudo cp /etc/nsswitch.conf "/etc/nsswitch.conf.bak.$(date +%s)"
+  ok "Backed up /etc/nsswitch.conf"
+  sudo sed -i 's/^hosts:.*/hosts: mymachines mdns4_minimal [NOTFOUND=return] files myhostname dns/' \
+    /etc/nsswitch.conf
+  ok "nsswitch.conf updated for mDNS (mdns4_minimal, no systemd-resolved dependency)"
 fi
 
-step_done 1
+sudo systemctl enable --now avahi-daemon 2>/dev/null && ok "avahi-daemon running" \
+  || warn "avahi-daemon may already be running"
 
-# ═══════════════════════════════════════════════════
-# STEP 2 — system dependencies
-# ═══════════════════════════════════════════════════
-hdr "Step 2/10 — System dependencies"
+info "This machine is now reachable at pensieve.local on your WiFi"
 
-if should_run 2; then
-  # Sync package database quietly
-  sudo pacman -Sy --noconfirm 2>&1 | grep -E '(error|warning:)' || true
-
-  # Install core packages — Arch correct names
-  # python     = Python 3 (Arch does NOT have a 'python3' package)
-  # python-pip = pip for Python 3 (NOT python3-pip)
-  # sqlite     = usually bundled with python, but explicit doesn't hurt
-  sudo pacman -S --needed --noconfirm \
-    git curl python python-pip avahi nss-mdns \
-    2>&1 | grep -E '(installing|upgrading|already installed|error)' || true
-  ok "Core packages installed"
-
-  # ── cloudflared ──────────────────────────────────
-  if command -v cloudflared &>/dev/null; then
-    ok "cloudflared already installed: $(cloudflared --version 2>&1 | head -1)"
-  else
-    info "Installing cloudflared..."
-    CF_INSTALLED=0
-
-    if command -v yay &>/dev/null; then
-      yay -S --noconfirm cloudflared 2>&1 | grep -E '(installing|error)' || true
-      command -v cloudflared &>/dev/null && CF_INSTALLED=1
-    fi
-
-    if [[ $CF_INSTALLED -eq 0 ]] && command -v paru &>/dev/null; then
-      paru -S --noconfirm cloudflared 2>&1 | grep -E '(installing|error)' || true
-      command -v cloudflared &>/dev/null && CF_INSTALLED=1
-    fi
-
-    if [[ $CF_INSTALLED -eq 0 ]]; then
-      info "No AUR helper found — downloading cloudflared binary directly"
-      CFVER=$(curl -s --max-time 15 \
-        https://api.github.com/repos/cloudflare/cloudflared/releases/latest \
-        | python -c "import sys,json; d=json.load(sys.stdin); print(d.get('tag_name',''))" \
-        2>/dev/null)
-      [[ -z "$CFVER" ]] && die "Could not fetch cloudflared release version. Check GitHub API."
-
-      TMPBIN="$(mktemp /tmp/cloudflared.XXXXXX)"
-      curl -sL --max-time 60 \
-        "https://github.com/cloudflare/cloudflared/releases/download/${CFVER}/cloudflared-linux-amd64" \
-        -o "$TMPBIN" || die "Download of cloudflared failed."
-      sudo install -m 755 "$TMPBIN" /usr/local/bin/cloudflared
-      rm -f "$TMPBIN"
-      command -v cloudflared &>/dev/null && CF_INSTALLED=1
-    fi
-
-    [[ $CF_INSTALLED -eq 0 ]] && die "cloudflared installation failed. Install manually from https://pkg.cloudflare.com"
-    ok "cloudflared installed: $(cloudflared --version 2>&1 | head -1)"
-  fi
-
-  # Detect actual cloudflared binary path (may be /usr/bin or /usr/local/bin)
-  CF_BIN=$(command -v cloudflared)
-  ok "cloudflared path: $CF_BIN"
-
-  # ── Ollama (local LLM) ────────────────────────────────────────────────────
-  # Ollama enables air-gapped operation — no Gemini API key required.
-  # The installer configures Ollama as the primary LLM backend.
-  # Gemini is retained as an automatic fallback if Ollama is unreachable.
-  echo ""
-  info "Ollama — local LLM server for offline enhancement"
-  info "Recommended model: qwen2.5:1.5b (~1 GB RAM, best quality/size ratio)"
-  info "Alternatives: qwen2.5:0.5b (~400 MB), phi3.5 (~2 GB), tinyllama (~600 MB)"
-  echo ""
-
-  OLLAMA_INSTALLED=0
-  OLLAMA_SVC_EXISTS=0
-
-  # ── detect existing installation ──────────────────────────────────────────
-  if command -v ollama &>/dev/null; then
-    OLLAMA_VER=$(ollama --version 2>/dev/null | head -1 || echo "unknown")
-    ok "Ollama already installed: ${OLLAMA_VER}"
-    OLLAMA_INSTALLED=1
-  fi
-
-  if systemctl list-unit-files ollama.service &>/dev/null 2>&1 \
-     || [[ -f /etc/systemd/system/ollama.service ]] \
-     || [[ -f /usr/lib/systemd/system/ollama.service ]]; then
-    ok "ollama.service already registered with systemd"
-    OLLAMA_SVC_EXISTS=1
-  fi
-
-  # ── install if not present ────────────────────────────────────────────────
-  if [[ $OLLAMA_INSTALLED -eq 0 ]]; then
-    info "Installing Ollama..."
-
-    OLLAMA_OK=0
-
-    # Try AUR helpers first (preferred on Arch)
-    if command -v yay &>/dev/null; then
-      yay -S --noconfirm ollama-bin 2>&1 | grep -E '(installing|error|warning:)' || true
-      command -v ollama &>/dev/null && OLLAMA_OK=1
-    fi
-
-    if [[ $OLLAMA_OK -eq 0 ]] && command -v paru &>/dev/null; then
-      paru -S --noconfirm ollama-bin 2>&1 | grep -E '(installing|error|warning:)' || true
-      command -v ollama &>/dev/null && OLLAMA_OK=1
-    fi
-
-    # Official install script as fallback (installs to /usr/local/bin + creates systemd unit)
-    if [[ $OLLAMA_OK -eq 0 ]]; then
-      info "No AUR helper available — using Ollama official install script"
-      curl -fsSL --max-time 60 https://ollama.com/install.sh | sh \
-        && command -v ollama &>/dev/null && OLLAMA_OK=1 \
-        || warn "Ollama official install script failed"
-    fi
-
-    if [[ $OLLAMA_OK -eq 0 ]]; then
-      warn "Could not install Ollama automatically."
-      warn "Install manually: https://ollama.com/download/linux"
-      warn "Then run: ollama pull qwen2.5:1.5b && sudo systemctl enable --now ollama"
-      warn "Continuing with Gemini as the primary LLM backend."
-    else
-      ok "Ollama installed: $(ollama --version 2>/dev/null | head -1)"
-    fi
-    OLLAMA_INSTALLED=$OLLAMA_OK
-  fi
-
-  # ── enable + start ollama.service ─────────────────────────────────────────
-  if [[ $OLLAMA_INSTALLED -eq 1 ]]; then
-    if systemctl is-active --quiet ollama 2>/dev/null; then
-      ok "ollama.service already running"
-    else
-      sudo systemctl enable ollama 2>/dev/null || true
-      sudo systemctl start ollama  2>/dev/null || true
-      sleep 2
-      if systemctl is-active --quiet ollama 2>/dev/null; then
-        ok "ollama.service started"
-      else
-        warn "ollama.service failed to start — check: sudo journalctl -u ollama -n 20"
-        warn "Continuing; Flask will fall back to Gemini for LLM calls."
-      fi
-    fi
-  fi
-
-  # ── model pull ────────────────────────────────────────────────────────────
-  if [[ $OLLAMA_INSTALLED -eq 1 ]] && systemctl is-active --quiet ollama 2>/dev/null; then
-    echo ""
-    echo "  Select the Ollama model to use (press Enter for default):"
-    echo "    1) qwen2.5:1.5b     ~1 GB  [default — best quality/size]"
-    echo "    2) qwen2.5:0.5b     ~400 MB [minimal footprint]"
-    echo "    3) phi3.5           ~2 GB  [best reasoning]"
-    echo "    4) tinyllama        ~600 MB [lowest quality]"
-    echo "    5) Custom (type model tag)"
-    echo ""
-    read -rp "  Choice [1]: " _MODEL_CHOICE
-    case "${_MODEL_CHOICE:-1}" in
-      1|"") OLLAMA_MODEL_TAG="qwen2.5:1.5b" ;;
-      2)    OLLAMA_MODEL_TAG="qwen2.5:0.5b" ;;
-      3)    OLLAMA_MODEL_TAG="phi3.5" ;;
-      4)    OLLAMA_MODEL_TAG="tinyllama" ;;
-      5)    read -rp "  Model tag: " OLLAMA_MODEL_TAG ;;
-      *)    OLLAMA_MODEL_TAG="qwen2.5:1.5b" ;;
-    esac
-
-    # Check if model is already present
-    if ollama list 2>/dev/null | grep -q "${OLLAMA_MODEL_TAG%%:*}"; then
-      ok "Model '${OLLAMA_MODEL_TAG}' already pulled"
-    else
-      info "Pulling model '${OLLAMA_MODEL_TAG}'… (this may take several minutes)"
-      if ollama pull "${OLLAMA_MODEL_TAG}" 2>&1; then
-        ok "Model '${OLLAMA_MODEL_TAG}' ready"
-      else
-        warn "Model pull failed — re-run manually: ollama pull ${OLLAMA_MODEL_TAG}"
-        warn "Falling back to Gemini until model is available."
-        OLLAMA_INSTALLED=0  # don't set LLM_BACKEND=ollama if model failed
-      fi
-    fi
-  else
-    OLLAMA_MODEL_TAG="qwen2.5:1.5b"  # set default even if install failed
-  fi
-
-  # Expose for step 6/7 to write into pensieve.env
-  if [[ $OLLAMA_INSTALLED -eq 1 ]]; then
-    _USE_OLLAMA=1
-  else
-    _USE_OLLAMA=0
-  fi
-
-  step_done 2
+# â”€â”€ 4. repo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+hdr "Step 4/10 â€” Repo"
+if [[ -d "$REPO_DIR/.git" ]]; then
+  git -C "$REPO_DIR" pull --ff-only
+  ok "Repo updated"
 else
-  ok "Step 2 skipped (already done)"
-  CF_BIN=$(command -v cloudflared 2>/dev/null || echo "/usr/local/bin/cloudflared")
-  OLLAMA_MODEL_TAG="${OLLAMA_MODEL_TAG:-qwen2.5:1.5b}"
-  if command -v ollama &>/dev/null && systemctl is-active --quiet ollama 2>/dev/null; then
-    _USE_OLLAMA=1
-  else
-    _USE_OLLAMA=0
-  fi
+  git clone https://github.com/jbaycroft/pensieve-sms.git "$REPO_DIR"
+  ok "Repo cloned to $REPO_DIR"
 fi
 
-# ═══════════════════════════════════════════════════
-# STEP 3 — hostname + mDNS
-# ═══════════════════════════════════════════════════
-hdr "Step 3/10 — Hostname + mDNS (pensieve.local)"
+# â”€â”€ 5. python venv â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+hdr "Step 5/10 â€” Python virtualenv"
+python3 -m venv "$REPO_DIR/.venv"
+"$REPO_DIR/.venv/bin/pip" install --upgrade pip -q
+"$REPO_DIR/.venv/bin/pip" install -r "$REPO_DIR/requirements.txt" -q
+ok "Dependencies installed"
 
-if should_run 3; then
-  sudo hostnamectl set-hostname pensieve \
-    && ok "Hostname set to: pensieve" \
-    || warn "hostnamectl failed — continuing"
+# â”€â”€ 6. credentials â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+hdr "Step 6/10 â€” Credentials"
+echo ""
+echo "  You will be prompted for each value."
+echo "  Sources:"
+echo "    Twilio   â†’ console.twilio.com â†’ Account Info (top right)"
+echo "    Gemini   â†’ aistudio.google.com/apikey"
+echo "    Cloudflare API â†’ dash.cloudflare.com â†’ My Profile â†’ API Tokens"
+echo "               Token needs: Zone:Read, DNS:Edit, Access:Edit, Account:Read"
+echo "    Cloudflare Account ID â†’ dash.cloudflare.com â†’ any zone â†’ right sidebar"
+echo ""
 
-  # Only modify nsswitch.conf if systemd-resolved isn't handling mDNS
-  if systemctl is-active --quiet systemd-resolved 2>/dev/null; then
-    warn "systemd-resolved is active — skipping nsswitch.conf modification"
-    warn "If pensieve.local doesn't resolve, set MulticastDNS=yes in /etc/systemd/resolved.conf"
-  else
-    if ! grep -q 'mdns4_minimal' /etc/nsswitch.conf 2>/dev/null; then
-      if grep -q '^hosts:' /etc/nsswitch.conf 2>/dev/null; then
-        # Replace existing hosts line
-        sudo sed -i \
-          's/^hosts:.*/hosts: mymachines mdns4_minimal [NOTFOUND=return] resolve [!UNAVAIL=return] files myhostname dns/' \
-          /etc/nsswitch.conf \
-          && ok "nsswitch.conf updated for mDNS" \
-          || warn "nsswitch.conf update failed — mDNS may not work"
-      else
-        # No hosts: line at all — append one (minimal Arch installs)
-        echo 'hosts: mymachines mdns4_minimal [NOTFOUND=return] resolve [!UNAVAIL=return] files myhostname dns' \
-          | sudo tee -a /etc/nsswitch.conf > /dev/null \
-          && ok "nsswitch.conf: hosts line added for mDNS" \
-          || warn "Could not write nsswitch.conf — mDNS may not resolve"
-      fi
-    else
-      ok "mDNS already in nsswitch.conf"
-    fi
-  fi
+ENV=""
+ENV+=$(ask TWILIO_ACCOUNT_SID  "Twilio Account SID"                  "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")$'\n'
+ENV+=$(ask TWILIO_AUTH_TOKEN    "Twilio Auth Token"                   "(from Twilio Console â†’ Account Info)")$'\n'
+ENV+=$(ask TWILIO_FROM_NUMBER   "Your Twilio phone number (E.164)"    "+12035550100")$'\n'
+ENV+=$(ask SMS_ALLOWLIST        "Your personal cell (E.164)"          "+12035551234")$'\n'
+ENV+=$(ask JEANNIE_NUMBER       "Jeannie's cell (E.164)"              "+12035559876")$'\n'
+ENV+=$(ask GEMINI_API_KEY       "Gemini API key"                      "AIzaSy...")$'\n'
+ENV+=$(ask VAULT_ROOT           "Full path to Pensieve vault on this machine" "$HOME/vault/Pensieve")$'\n'
+ENV+="ENHANCE_MOCK=0"$'\n'
+ENV+="TEST_ENDPOINT_ENABLED=0"$'\n'
 
-  # Enable avahi (guard against conflict if already running)
-  if systemctl is-active --quiet avahi-daemon 2>/dev/null; then
-    ok "avahi-daemon already running"
-  else
-    sudo systemctl enable --now avahi-daemon 2>/dev/null \
-      && ok "avahi-daemon enabled + started" \
-      || warn "avahi-daemon start failed (non-fatal for tunnel setup)"
-  fi
+# Cloudflare â€” stored separately (not in ENV_FILE, used only during setup)
+CF_ACCOUNT_ID=$(ask_val "Cloudflare Account ID" "found in dash.cloudflare.com â†’ right sidebar of any zone")
+CF_API_TOKEN=$(ask_val  "Cloudflare API Token"   "create at dash.cloudflare.com â†’ My Profile â†’ API Tokens")
+JOHN_EMAIL=$(ask_val    "John's Google email (for Cloudflare Access)"    "john@gmail.com")
+JEANNIE_EMAIL=$(ask_val "Jeannie's Google email (for Cloudflare Access)" "jeannie@gmail.com")
 
-  info "Machine will be reachable as pensieve.local on home WiFi"
-  step_done 3
-else
-  ok "Step 3 skipped (already done)"
-fi
+# â”€â”€ 7. write env file â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+hdr "Step 7/10 â€” Writing /etc/pensieve.env"
+printf '%s' "$ENV" | sudo tee "$ENV_FILE" > /dev/null
+sudo chmod 600 "$ENV_FILE"
+ok "Credentials written to $ENV_FILE (chmod 600, readable only by root)"
 
-# ═══════════════════════════════════════════════════
-# STEP 4 — repo
-# ═══════════════════════════════════════════════════
-hdr "Step 4/10 — Repository"
+# â”€â”€ 8. flask systemd service â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+hdr "Step 8/10 â€” Flask service"
 
-if should_run 4; then
-  if [[ -d "$REPO_DIR/.git" ]]; then
-    git -C "$REPO_DIR" pull --ff-only \
-      && ok "Repo updated" \
-      || warn "git pull failed — continuing with existing code"
-  else
-    info "Cloning via SSH…"
-    if git clone git@github.com:jbaycroft/pensieve-sms.git "$REPO_DIR" 2>/dev/null; then
-      ok "Repo cloned via SSH"
-    else
-      warn "SSH clone failed — trying HTTPS (no SSH key needed)"
-      git clone https://github.com/jbaycroft/pensieve-sms.git "$REPO_DIR" \
-        || die "Cannot clone repo. Check internet and GitHub access."
-      ok "Repo cloned via HTTPS"
-      warn "To switch to SSH later: git -C $REPO_DIR remote set-url origin git@github.com:jbaycroft/pensieve-sms.git"
-    fi
-  fi
-  step_done 4
-else
-  ok "Step 4 skipped (already done)"
-fi
-
-# ═══════════════════════════════════════════════════
-# STEP 5 — python virtualenv
-# ═══════════════════════════════════════════════════
-hdr "Step 5/10 — Python virtualenv + dependencies"
-
-if should_run 5; then
-  # Detect correct Python binary (Arch uses 'python', not 'python3')
-  PYTHON=""
-  for py in python python3; do
-    if command -v "$py" &>/dev/null; then
-      ver=$("$py" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
-      major=$(echo "$ver" | cut -d. -f1)
-      minor=$(echo "$ver" | cut -d. -f2)
-      if [[ "${major:-0}" -ge 3 && "${minor:-0}" -ge 10 ]]; then
-        PYTHON="$py"
-        break
-      fi
-    fi
-  done
-  [[ -z "$PYTHON" ]] && die "Python 3.10+ not found. Install: sudo pacman -S python"
-  ok "Python: $($PYTHON --version)"
-
-  # Create venv (python's built-in venv, no separate package needed on Arch)
-  if [[ ! -d "$REPO_DIR/.venv" ]]; then
-    "$PYTHON" -m venv "$REPO_DIR/.venv" 2>/dev/null || {
-      warn "venv creation failed — trying python-virtualenv"
-      sudo pacman -S --needed --noconfirm python-virtualenv \
-        && virtualenv "$REPO_DIR/.venv" \
-        || die "Cannot create virtualenv. Check python installation."
-    }
-    ok "Virtual environment created"
-  else
-    ok "Virtual environment already exists"
-  fi
-
-  # Upgrade pip silently
-  "$REPO_DIR/.venv/bin/pip" install --upgrade pip --quiet 2>/dev/null || true
-
-  # Install deps with retry (network can be flaky)
-  INSTALLED=0
-  for attempt in 1 2 3; do
-    if "$REPO_DIR/.venv/bin/pip" install -r "$REPO_DIR/requirements.txt" --quiet; then
-      INSTALLED=1
-      break
-    fi
-    warn "pip install attempt $attempt/3 failed — retrying in 5s"
-    sleep 5
-  done
-  [[ $INSTALLED -eq 0 ]] && die "pip install failed after 3 attempts. Check requirements.txt and internet."
-
-  # Sanity check
-  "$REPO_DIR/.venv/bin/python" -c "import flask, twilio" \
-    || die "Import check failed — flask or twilio not installed."
-
-  ok "Python dependencies installed"
-  step_done 5
-else
-  ok "Step 5 skipped (already done)"
-  # Detect PYTHON for later steps — safe even if python3 is the only name
-  PYTHON=$(command -v python 2>/dev/null || command -v python3 2>/dev/null || true)
-  [[ -z "${PYTHON:-}" ]] && die "Python not found. Run: sudo pacman -S python"
-fi
-
-# ═══════════════════════════════════════════════════
-# STEP 6 — credentials
-# ═══════════════════════════════════════════════════
-
-# Helper to read a required value
-ask_val() {
-  local desc="$1" ex="${2:-}" val
-  echo -e "\n  ${YLW}${desc}${NC}"
-  [[ -n "$ex" ]] && echo -e "  ${CYN}Example: ${ex}${NC}"
-  while true; do
-    read -r -p "  ▶ " val
-    [[ -n "$val" ]] && break
-    echo -e "  ${RED}Value required.${NC}"
-  done
-  echo "$val"
-}
-
-hdr "Step 6/10 — Credentials"
-
-if should_run 6; then
-  echo ""
-  echo "  Sources:"
-  echo "    Twilio      → console.twilio.com → Account Info (top right)"
-  echo "    Gemini      → aistudio.google.com/apikey"
-  echo "    Cloudflare  → dash.cloudflare.com → My Profile → API Tokens"
-  echo "                  Required scopes: Zone:Read, DNS:Edit, Access:Edit, Account:Read"
-  echo "    Account ID  → dash.cloudflare.com → any zone → right sidebar"
-  echo ""
-
-  SID=$(ask_val      "Twilio Account SID"                    "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
-  TOKEN=$(ask_val    "Twilio Auth Token"                     "(from Twilio Console → Account Info)")
-  FROM=$(ask_val     "Your Twilio phone number (E.164)"      "+12035550100")
-  ALLOWLIST=$(ask_val "Your cell number (E.164)"             "+12035551234")
-  JEANNIE=$(ask_val  "Jeannie's cell (E.164)"               "+12035559876")
-  GEMINI=$(ask_val   "Gemini API key"                        "AIzaSy...")
-  VAULT=$(ask_val    "Full path to Pensieve vault on this machine" "$HOME/vault/Pensieve")
-
-  CF_ACCOUNT_ID=$(ask_val "Cloudflare Account ID"           "found in dash.cloudflare.com → right sidebar")
-  CF_API_TOKEN=$(ask_val  "Cloudflare API Token"            "create at dash.cloudflare.com → My Profile → API Tokens")
-  JOHN_EMAIL=$(ask_val    "John's Google email (for Cloudflare Access)"    "john@gmail.com")
-  JEANNIE_EMAIL=$(ask_val "Jeannie's Google email (for Cloudflare Access)" "jeannie@gmail.com")
-
-  echo ""
-  info "Validating Twilio credentials…"
-  TW_HTTP=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
-    -u "${SID}:${TOKEN}" \
-    "https://api.twilio.com/2010-04-01/Accounts/${SID}.json" 2>/dev/null)
-  if [[ "$TW_HTTP" == "200" ]]; then
-    ok "Twilio credentials valid"
-  else
-    warn "Twilio API returned HTTP ${TW_HTTP} — double-check SID and token"
-    warn "Continuing anyway — you can update /etc/pensieve.env later"
-  fi
-
-  info "Validating Cloudflare API token…"
-  CF_HTTP=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
-    -H "Authorization: Bearer ${CF_API_TOKEN}" \
-    "https://api.cloudflare.com/client/v4/user/tokens/verify" 2>/dev/null)
-  if [[ "$CF_HTTP" == "200" ]]; then
-    ok "Cloudflare token valid"
-  else
-    warn "Cloudflare token returned HTTP ${CF_HTTP} — check token scopes"
-    warn "Required: Zone:Read, DNS:Edit, Access:Edit, Account:Read"
-  fi
-
-  # Verify vault path exists
-  if [[ ! -d "$VAULT" ]]; then
-    warn "Vault directory '$VAULT' does not exist — it will be created."
-    mkdir -p "$VAULT/00_Queue/Tickets" || die "Cannot create vault directory."
-  fi
-
-  # Check / create Index.md
-  if [[ ! -f "$VAULT/00_Queue/Index.md" ]]; then
-    info "Creating initial Index.md…"
-    mkdir -p "$VAULT/00_Queue/Tickets"
-    cat > "$VAULT/00_Queue/Index.md" <<'INDEXEOF'
----
-title: Queue
-description: Pensieve FIFO task queue
----
-%%
-HEAD: first [[TKT-*]] in list
-%%
-
-INDEXEOF
-    ok "Index.md created"
-  fi
-
-  step_done 6
-fi
-
-# ═══════════════════════════════════════════════════
-# STEP 7 — write env file
-# ═══════════════════════════════════════════════════
-hdr "Step 7/10 — Writing /etc/pensieve.env"
-
-if should_run 7; then
-  # SID/TOKEN/etc. only defined if step 6 ran; else load from existing file
-  if [[ -z "${SID:-}" ]]; then
-    [[ -f "$ENV_FILE" ]] || die "No credentials collected and $ENV_FILE does not exist. Delete checkpoint and re-run."
-    info "Using existing $ENV_FILE"
-  else
-    # Determine LLM backend based on what step 2 installed
-    if [[ "${_USE_OLLAMA:-0}" -eq 1 ]]; then
-      _LLM_BACKEND="ollama"
-      ok "LLM backend: Ollama (primary) + Gemini (fallback)"
-    else
-      _LLM_BACKEND="gemini"
-      ok "LLM backend: Gemini (primary) + Ollama (fallback if available)"
-    fi
-
-    printf '%s\n' \
-      "TWILIO_ACCOUNT_SID=${SID}" \
-      "TWILIO_AUTH_TOKEN=${TOKEN}" \
-      "TWILIO_FROM_NUMBER=${FROM}" \
-      "SMS_ALLOWLIST=${ALLOWLIST}" \
-      "JEANNIE_NUMBER=${JEANNIE}" \
-      "GEMINI_API_KEY=${GEMINI}" \
-      "VAULT_ROOT=${VAULT}" \
-      "ENHANCE_MOCK=0" \
-      "TEST_ENDPOINT_ENABLED=0" \
-      "LLM_BACKEND=${_LLM_BACKEND}" \
-      "OLLAMA_BASE_URL=http://localhost:11434" \
-      "OLLAMA_MODEL=${OLLAMA_MODEL_TAG:-qwen2.5:1.5b}" \
-      "OLLAMA_TIMEOUT=15" \
-    | sudo tee "$ENV_FILE" > /dev/null
-    sudo chmod 600 "$ENV_FILE"
-    ok "Credentials written to $ENV_FILE (mode 600)"
-  fi
-  step_done 7
-else
-  ok "Step 7 skipped (already done)"
-fi
-
-# Re-read VAULT from env file for later steps (f2- handles paths with = in them)
-VAULT=$(sudo grep "^VAULT_ROOT=" "$ENV_FILE" 2>/dev/null | cut -d= -f2- || echo "$HOME/vault/Pensieve")
-
-# ═══════════════════════════════════════════════════
-# STEP 8 — Flask systemd service
-# ═══════════════════════════════════════════════════
-hdr "Step 8/10 — Flask systemd service"
-
-if should_run 8; then
-  FLASK_BIN="${REPO_DIR}/.venv/bin/python"
-  [[ -x "$FLASK_BIN" ]] || die "Python venv not found at $FLASK_BIN — did step 5 complete?"
-
-  sudo tee /etc/systemd/system/pensieve-flask.service > /dev/null <<UNIT
+# Generate service file dynamically (paths depend on $USER and $HOME)
+sudo tee /etc/systemd/system/pensieve-flask.service > /dev/null <<UNIT
 [Unit]
-Description=The Burrow — Pensieve Flask (SMS + PWA)
-After=network-online.target
-Wants=network-online.target
+Description=The Burrow â€” Pensieve Flask (SMS + PWA)
+After=network.target
 StartLimitIntervalSec=60
 StartLimitBurst=5
 
@@ -627,160 +200,72 @@ Type=simple
 User=${USER}
 WorkingDirectory=${REPO_DIR}
 EnvironmentFile=${ENV_FILE}
-ExecStart=${FLASK_BIN} flask_ingress.py
+ExecStart=${REPO_DIR}/.venv/bin/python flask_ingress.py
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
 
-# ── security hardening ────────────────────────────────
-PrivateTmp=yes
-ProtectSystem=strict
-ProtectHome=read-only
-NoNewPrivileges=yes
-CapabilityBoundingSet=
-RestrictNamespaces=yes
-RestrictRealtime=yes
-ProtectClock=yes
-ProtectKernelTunables=yes
-ProtectKernelModules=yes
-ProtectControlGroups=yes
-LockPersonality=yes
-LimitNOFILE=4096
-# Allow writes to vault dir and repo dir only
-ReadWritePaths=${VAULT} ${REPO_DIR}
-
 [Install]
 WantedBy=multi-user.target
 UNIT
 
-  # ── backup timer ─────────────────────────────────────
-  # Backs up pensieve.db daily at 03:00, keeps 7 copies
-  sudo tee /etc/systemd/system/pensieve-backup.service > /dev/null <<UNIT
-[Unit]
-Description=The Burrow — Daily DB backup
-After=pensieve-flask.service
+sudo systemctl daemon-reload
+sudo systemctl enable pensieve-flask
+sudo systemctl restart pensieve-flask
 
-[Service]
-Type=oneshot
-User=${USER}
-ExecStart=${REPO_DIR}/deploy/backup.sh
-StandardOutput=journal
-StandardError=journal
-UNIT
-
-  sudo tee /etc/systemd/system/pensieve-backup.timer > /dev/null <<UNIT
-[Unit]
-Description=The Burrow — Daily backup timer
-
-[Timer]
-OnCalendar=*-*-* 03:00:00
-RandomizedDelaySec=300
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-UNIT
-
-  sudo systemctl daemon-reload
-  sudo systemctl enable pensieve-flask
-  sudo systemctl restart pensieve-flask
-  sudo systemctl enable pensieve-backup.timer
-  sudo systemctl start pensieve-backup.timer
-  ok "Flask service installed and started"
-  ok "Daily backup timer enabled (03:00)"
-
-  # Health check with 10-attempt retry
-  info "Waiting for Flask to respond…"
-  FLASK_UP=0
-  for i in $(seq 1 15); do
-    HTTP=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://127.0.0.1:5005/health 2>/dev/null)
-    if [[ "$HTTP" == "200" ]]; then
-      FLASK_UP=1
-      break
-    fi
-    sleep 1
-  done
-
-  if [[ $FLASK_UP -eq 1 ]]; then
-    # Fetch and display health status
-    HEALTH_JSON=$(curl -s --max-time 3 http://127.0.0.1:5005/health 2>/dev/null || echo "{}")
-    DB_OK=$(echo "$HEALTH_JSON" | python -c "import sys,json; d=json.load(sys.stdin); print(d.get('db_ok','?'))" 2>/dev/null)
-    VAULT_OK=$(echo "$HEALTH_JSON" | python -c "import sys,json; d=json.load(sys.stdin); print(d.get('vault_ok','?'))" 2>/dev/null)
-    ok "Flask healthy: db_ok=${DB_OK}  vault_ok=${VAULT_OK}"
-  else
-    echo ""
-    echo "  Flask service log (last 20 lines):"
-    sudo journalctl -u pensieve-flask -n 20 --no-pager 2>/dev/null || true
-    echo ""
-    die "Flask /health not responding on port 5005. Fix the issue and re-run."
+# Wait up to 15 seconds for Flask to become active
+_flask_ok=0
+for _i in $(seq 1 15); do
+  sleep 1
+  if systemctl is-active --quiet pensieve-flask; then
+    _flask_ok=1
+    break
   fi
+done
 
-  step_done 8
+if [[ "$_flask_ok" -eq 1 ]]; then
+  ok "Flask running on 127.0.0.1:5005"
 else
-  ok "Step 8 skipped (already done)"
+  die "Flask failed after 15s — check: journalctl -u pensieve-flask"
 fi
 
-# ═══════════════════════════════════════════════════
-# STEP 9 — Cloudflare tunnel
-# ═══════════════════════════════════════════════════
-hdr "Step 9/10 — Cloudflare Tunnel (theburrow.house)"
+# Verify routes
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5005/)
+[[ "$HTTP_CODE" == "200" ]] && ok "GET / â†’ 200 OK" \
+  || warn "GET / returned ${HTTP_CODE} â€” check logs if tunnel fails later"
 
-# Detect CF_BIN if step 2 was skipped
-CF_BIN="${CF_BIN:-$(command -v cloudflared 2>/dev/null || echo /usr/local/bin/cloudflared)}"
+# â”€â”€ 9. cloudflare tunnel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+hdr "Step 9/10 â€” Cloudflare Tunnel (theburrow.house)"
+echo ""
+echo "  A browser URL will appear below. Open it to authenticate."
+echo "  If running headless (SSH), copy the URL and open it on another machine."
+echo ""
+cloudflared tunnel login
+ok "Cloudflare login complete"
 
-if should_run 9; then
-  echo ""
-  echo "  A browser URL will appear. Open it to authenticate with Cloudflare."
-  echo "  If running headless (SSH session), copy the URL and open on another machine."
-  echo ""
+# Create tunnel (idempotent — checks existence before creating)
+if cloudflared tunnel list 2>/dev/null | grep -q "\b${TUNNEL_NAME}\b"; then
+  ok "Tunnel '${TUNNEL_NAME}' already exists"
+else
+  cloudflared tunnel create "$TUNNEL_NAME" || die "Failed to create Cloudflare tunnel '${TUNNEL_NAME}'"
+  ok "Tunnel '${TUNNEL_NAME}' created"
+fi
 
-  "$CF_BIN" tunnel login \
-    || die "Cloudflare login failed. Check network and try again."
-  ok "Cloudflare login complete"
-
-  # Create tunnel (idempotent)
-  "$CF_BIN" tunnel create "$TUNNEL_NAME" 2>/dev/null \
-    && ok "Tunnel '${TUNNEL_NAME}' created" \
-    || ok "Tunnel '${TUNNEL_NAME}' already exists"
-
-  # Get tunnel ID — cloudflared tunnel list returns a JSON array
-  # Older versions emit bare [], newer may emit {"result":[],...}
-  TUNNEL_LIST_JSON=$("$CF_BIN" tunnel list --output json 2>/dev/null || echo "[]")
-  TUNNEL_ID=$(echo "$TUNNEL_LIST_JSON" | python -c "
+# Get tunnel ID
+TUNNEL_ID=$(cloudflared tunnel list --output json \
+  | python3 -c "
 import sys, json
-try:
-    raw = json.load(sys.stdin)
-    # Handle both bare array and {result: [...]} wrapper
-    tunnels = raw if isinstance(raw, list) else raw.get('result', []) or []
-    match = [t for t in tunnels if isinstance(t, dict) and t.get('name') == '${TUNNEL_NAME}']
-    print(match[0]['id'] if match else '')
-except Exception:
-    print('')
+tunnels = json.load(sys.stdin)
+match = [t for t in tunnels if t['name'] == '${TUNNEL_NAME}']
+print(match[0]['id'] if match else '')
 " 2>/dev/null)
+[[ -z "$TUNNEL_ID" ]] && die "Could not get tunnel ID"
+ok "Tunnel ID: $TUNNEL_ID"
 
-  if [[ -z "${TUNNEL_ID:-}" ]]; then
-    # Fallback: try reading tunnel UUID from credentials file directly
-    TUNNEL_ID=$(ls "$HOME/.cloudflared/"*.json 2>/dev/null \
-      | xargs -I{} python -c "import json,sys; d=json.load(open('{}'));print(d.get('TunnelID',''))" 2>/dev/null \
-      | head -1 || true)
-  fi
-
-  [[ -z "${TUNNEL_ID:-}" ]] && die "Could not retrieve tunnel ID for '${TUNNEL_NAME}'. Run manually: cloudflared tunnel list"
-  ok "Tunnel ID: $TUNNEL_ID"
-
-  # Verify credentials file exists — cloudflared tunnel create should have made it
-  CF_CREDS="$HOME/.cloudflared/${TUNNEL_ID}.json"
-  if [[ ! -f "$CF_CREDS" ]]; then
-    warn "Credentials file not found at $CF_CREDS"
-    warn "Re-run cloudflared tunnel login and tunnel create if this step fails"
-  else
-    ok "Credentials file: $CF_CREDS"
-  fi
-
-  # Write cloudflared config
-  mkdir -p "$HOME/.cloudflared"
-  cat > "$HOME/.cloudflared/config.yml" <<EOF
+# Write cloudflared config â€” both subdomains in one tunnel
+mkdir -p "$HOME/.cloudflared"
+cat > "$HOME/.cloudflared/config.yml" <<EOF
 tunnel: ${TUNNEL_ID}
 credentials-file: ${HOME}/.cloudflared/${TUNNEL_ID}.json
 
@@ -793,23 +278,22 @@ ingress:
 
   - service: http_status:404
 EOF
-  ok "cloudflared config.yml written"
+ok "cloudflared config written"
 
-  # Route DNS — both subdomains (idempotent)
-  "$CF_BIN" tunnel route dns "$TUNNEL_NAME" "$HUB_HOST" 2>/dev/null \
-    && ok "DNS routed: ${HUB_HOST}" \
-    || warn "DNS route for ${HUB_HOST} may already exist (safe)"
+# Route DNS for both subdomains
+cloudflared tunnel route dns "$TUNNEL_NAME" "$HUB_HOST" \
+  && ok "DNS routed: ${HUB_HOST}" \
+  || warn "DNS routing for ${HUB_HOST} may already exist"
 
-  "$CF_BIN" tunnel route dns "$TUNNEL_NAME" "$SMS_HOST" 2>/dev/null \
-    && ok "DNS routed: ${SMS_HOST}" \
-    || warn "DNS route for ${SMS_HOST} may already exist (safe)"
+cloudflared tunnel route dns "$TUNNEL_NAME" "$SMS_HOST" \
+  && ok "DNS routed: ${SMS_HOST}" \
+  || warn "DNS routing for ${SMS_HOST} may already exist"
 
-  # Tunnel systemd service — uses detected CF_BIN path
-  sudo tee /etc/systemd/system/pensieve-tunnel.service > /dev/null <<UNIT
+# Tunnel systemd service
+sudo tee /etc/systemd/system/pensieve-tunnel.service > /dev/null <<UNIT
 [Unit]
-Description=The Burrow — Cloudflare Named Tunnel (theburrow.house)
-After=network-online.target pensieve-flask.service
-Wants=network-online.target
+Description=The Burrow â€” Cloudflare Named Tunnel (theburrow.house)
+After=network.target pensieve-flask.service
 Requires=pensieve-flask.service
 StartLimitIntervalSec=60
 StartLimitBurst=5
@@ -817,7 +301,9 @@ StartLimitBurst=5
 [Service]
 Type=simple
 User=${USER}
-ExecStart=${CF_BIN} tunnel --config ${HOME}/.cloudflared/config.yml run ${TUNNEL_NAME}
+ExecStart=${CF_BIN} tunnel \
+    --config ${HOME}/.cloudflared/config.yml \
+    run ${TUNNEL_NAME}
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
@@ -827,42 +313,36 @@ StandardError=journal
 WantedBy=multi-user.target
 UNIT
 
-  sudo systemctl daemon-reload
-  sudo systemctl enable pensieve-tunnel
-  sudo systemctl restart pensieve-tunnel
+sudo systemctl daemon-reload
+sudo systemctl enable pensieve-tunnel
+sudo systemctl restart pensieve-tunnel
+sleep 4
 
-  # Wait for tunnel to connect
-  info "Waiting for tunnel to connect…"
-  sleep 5
-
-  if systemctl is-active --quiet pensieve-tunnel; then
-    ok "Tunnel service running"
-  else
-    echo "  Tunnel service log (last 20 lines):"
-    sudo journalctl -u pensieve-tunnel -n 20 --no-pager 2>/dev/null || true
-    die "Tunnel failed to start. Check log above and re-run."
-  fi
-
-  step_done 9
+if systemctl is-active --quiet pensieve-tunnel; then
+  ok "Tunnel running"
 else
-  ok "Step 9 skipped (already done)"
+  die "Tunnel failed â€” check: journalctl -u pensieve-tunnel"
 fi
 
-# ═══════════════════════════════════════════════════
-# STEP 10 — Cloudflare Access + Twilio webhook
-# ═══════════════════════════════════════════════════
-hdr "Step 10/10 — Cloudflare Access + Twilio webhook"
+# â”€â”€ 10. cloudflare access (hub only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+hdr "Step 10/10 â€” Cloudflare Access (hub.theburrow.house)"
+echo "  Configuring Google-auth-gated access to the PWAâ€¦"
 
-if should_run 10; then
-  # Load CF creds — may have been collected in step 6 or need re-prompting
-  if [[ -z "${CF_ACCOUNT_ID:-}" ]]; then
-    CF_ACCOUNT_ID=$(ask_val "Cloudflare Account ID" "from dash.cloudflare.com → sidebar")
-    CF_API_TOKEN=$(ask_val  "Cloudflare API Token"   "from dash.cloudflare.com → My Profile → API Tokens")
-    JOHN_EMAIL=$(ask_val    "John's Google email"    "john@gmail.com")
-    JEANNIE_EMAIL=$(ask_val "Jeannie's Google email" "jeannie@gmail.com")
-  fi
+# Check if Access application already exists for this domain (idempotent)
+CF_APP_ID=$(curl -s \
+  "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/access/apps" \
+  -H "Authorization: Bearer ${CF_API_TOKEN}" \
+  | python3 -c "
+import sys, json
+r = json.load(sys.stdin)
+apps = r.get('result') or []
+match = next((a for a in apps if a.get('domain') == '${HUB_HOST}'), None)
+print(match['id'] if match else '')
+" 2>/dev/null)
 
-  info "Creating Cloudflare Access application for ${HUB_HOST}…"
+if [[ -n "$CF_APP_ID" ]]; then
+  ok "Access application already exists (id: ${CF_APP_ID}) — skipping creation"
+else
   CF_APP_JSON=$(curl -s -X POST \
     "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/access/apps" \
     -H "Authorization: Bearer ${CF_API_TOKEN}" \
@@ -873,14 +353,15 @@ if should_run 10; then
       \"type\": \"self_hosted\",
       \"session_duration\": \"168h\",
       \"auto_redirect_to_identity\": true
-    }" 2>/dev/null)
+    }")
 
-  CF_APP_ID=$(echo "$CF_APP_JSON" | python -c \
+  CF_APP_ID=$(echo "$CF_APP_JSON" | python3 -c \
     "import sys,json; r=json.load(sys.stdin); print(r.get('result',{}).get('id',''))" 2>/dev/null)
 
   if [[ -n "$CF_APP_ID" ]]; then
     ok "Access application created (id: ${CF_APP_ID})"
 
+    # Create allow policy for both emails
     curl -s -X POST \
       "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/access/apps/${CF_APP_ID}/policies" \
       -H "Authorization: Bearer ${CF_API_TOKEN}" \
@@ -894,109 +375,92 @@ if should_run 10; then
         ],
         \"require\": [],
         \"exclude\": []
-      }" > /dev/null 2>&1
+      }" > /dev/null
     ok "Access policy created — ${JOHN_EMAIL} + ${JEANNIE_EMAIL}"
   else
-    warn "Access app creation failed. Create manually:"
-    warn "  dash.cloudflare.com → Zero Trust → Access → Applications → Add"
-    warn "  Domain: ${HUB_HOST}  | Session: 168h"
+    warn "Access app creation failed — check API token permissions."
+    warn "You can configure Access manually at: dash.cloudflare.com → Zero Trust → Access"
   fi
+fi
 
-  # ── Twilio webhook auto-configure ────────────────────────
-  info "Configuring Twilio webhook…"
-  _SID=$(sudo grep "^TWILIO_ACCOUNT_SID=" "$ENV_FILE" | cut -d= -f2-)
-  _TOK=$(sudo grep "^TWILIO_AUTH_TOKEN=" "$ENV_FILE" | cut -d= -f2-)
-  _NUM=$(sudo grep "^TWILIO_FROM_NUMBER=" "$ENV_FILE" | cut -d= -f2-)
+# â”€â”€ twilio webhook update reminder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+echo ""
+echo "  Updating Twilio webhookâ€¦"
+# Extract Twilio creds from ENV_FILE
+_SID=$(sudo grep "^TWILIO_ACCOUNT_SID=" "$ENV_FILE" | cut -d= -f2-)
+_TOK=$(sudo grep "^TWILIO_AUTH_TOKEN=" "$ENV_FILE" | cut -d= -f2-)
+_NUM=$(sudo grep "^TWILIO_FROM_NUMBER=" "$ENV_FILE" | cut -d= -f2-)
 
-  _PNSID=$(curl -s --max-time 10 -u "${_SID}:${_TOK}" \
-    "https://api.twilio.com/2010-04-01/Accounts/${_SID}/IncomingPhoneNumbers.json" \
-    | python -c "
-import sys, json
-try:
-  data = json.load(sys.stdin)
-  nums = data.get('incoming_phone_numbers', [])
-  target = '${_NUM}'.replace(' ','')
-  match = next((n for n in nums if n['phone_number'].replace(' ','') == target), None)
-  print(match['sid'] if match else '')
-except Exception:
-  print('')
+# Look up Phone Number SID
+_PNSID=$(curl -s -u "${_SID}:${_TOK}" \
+  "https://api.twilio.com/2010-04-01/Accounts/${_SID}/IncomingPhoneNumbers.json" \
+  | python3 -c "
+import sys, json, urllib.parse
+data = json.load(sys.stdin)
+nums = data.get('incoming_phone_numbers', [])
+target = '${_NUM}'.replace(' ','')
+match = next((n for n in nums if n['phone_number'].replace(' ','') == target), None)
+print(match['sid'] if match else '')
 " 2>/dev/null)
 
-  if [[ -n "$_PNSID" ]]; then
-    curl -s -X POST -u "${_SID}:${_TOK}" \
-      "https://api.twilio.com/2010-04-01/Accounts/${_SID}/IncomingPhoneNumbers/${_PNSID}.json" \
-      --data-urlencode "SmsUrl=https://${SMS_HOST}/sms" \
-      --data-urlencode "SmsMethod=POST" > /dev/null 2>&1
-    ok "Twilio webhook set → https://${SMS_HOST}/sms"
-  else
-    warn "Could not auto-configure Twilio. Set manually:"
-    warn "  console.twilio.com → your number → Messaging → Webhook"
-    warn "  POST  https://${SMS_HOST}/sms"
-  fi
-
-  step_done 10
+if [[ -n "$_PNSID" ]]; then
+  curl -s -X POST -u "${_SID}:${_TOK}" \
+    "https://api.twilio.com/2010-04-01/Accounts/${_SID}/IncomingPhoneNumbers/${_PNSID}.json" \
+    --data-urlencode "SmsUrl=https://${SMS_HOST}/sms" \
+    --data-urlencode "SmsMethod=POST" > /dev/null
+  ok "Twilio webhook set â†’ https://${SMS_HOST}/sms"
 else
-  ok "Step 10 skipped (already done)"
+  warn "Could not auto-configure Twilio. Set manually:"
+  warn "  console.twilio.com â†’ your number â†’ Messaging â†’ Webhook"
+  warn "  POST  https://${SMS_HOST}/sms"
 fi
 
-# ═══════════════════════════════════════════════════
-# COMPLETE
-# ═══════════════════════════════════════════════════
-rm -f "$CHECKPOINT_FILE"
-
-# Get CF team domain for Google IdP instructions
-CF_TEAM=""
-if [[ -n "${CF_ACCOUNT_ID:-}" ]] && [[ -n "${CF_API_TOKEN:-}" ]]; then
-  CF_TEAM=$(curl -s --max-time 10 \
-    "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/access/organizations" \
-    -H "Authorization: Bearer ${CF_API_TOKEN}" \
-    | python -c "import sys,json; r=json.load(sys.stdin); print(r.get('result',{}).get('auth_domain','<your-team>.cloudflareaccess.com'))" \
-    2>/dev/null || echo "<your-team>.cloudflareaccess.com")
-fi
-CF_TEAM="${CF_TEAM:-<your-team>.cloudflareaccess.com}"
-
+# â”€â”€ final summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 echo ""
-echo -e "${GRN}╔═══════════════════════════════════════════════════════╗${NC}"
-echo -e "${GRN}║            INSTALLATION COMPLETE                      ║${NC}"
-echo -e "${GRN}╚═══════════════════════════════════════════════════════╝${NC}"
+echo -e "${GRN}â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—${NC}"
+echo -e "${GRN}â•‘               INSTALLATION COMPLETE                         â•‘${NC}"
+echo -e "${GRN}â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
 echo ""
 echo -e "  ${CYN}Services${NC}"
-echo "    systemctl status pensieve-flask"
-echo "    systemctl status pensieve-tunnel"
-echo "    journalctl -fu pensieve-flask"
-echo "    journalctl -fu pensieve-tunnel"
+echo "    pensieve-flask   â†’ systemctl status pensieve-flask"
+echo "    pensieve-tunnel  â†’ systemctl status pensieve-tunnel"
 echo ""
 echo -e "  ${CYN}URLs${NC}"
-echo -e "    PWA (authenticated)  → ${YLW}https://${HUB_HOST}${NC}"
-echo -e "    SMS webhook          → ${YLW}https://${SMS_HOST}/sms${NC}"
-echo -e "    Local (home WiFi)    → ${YLW}http://pensieve.local:5005${NC}"
+echo -e "    PWA (home, authenticated) â†’ ${YLW}https://${HUB_HOST}${NC}"
+echo -e "    SMS webhook               â†’ ${YLW}https://${SMS_HOST}/sms${NC}"
+echo -e "    Local (home WiFi)         â†’ ${YLW}http://pensieve.local:5005${NC}"
 echo ""
-echo -e "  ${CYN}Add to Home Screen (PWA install)${NC}"
-echo "    iPhone:  Safari → Share → Add to Home Screen"
-echo "    Android: Chrome → ⋮ → Add to Home Screen"
+echo -e "  ${CYN}Add to Home Screen${NC}"
+echo "    iPhone:  Safari â†’ Share â†’ Add to Home Screen"
+echo "    Android: Chrome â†’ â‹® â†’ Add to Home Screen"
 echo ""
-echo -e "  ${YLW}One manual step — Google Identity Provider:${NC}"
+echo -e "  ${YLW}One manual step remaining â€” Google Identity Provider:${NC}"
 echo ""
-echo "    1. console.cloud.google.com"
-echo "       APIs & Services → Credentials → Create → OAuth 2.0 Client ID"
+echo "    1. Go to: console.cloud.google.com"
+echo "       APIs & Services â†’ Credentials â†’ Create â†’ OAuth 2.0 Client"
 echo "       Application type: Web"
 echo "       Authorised redirect URI:"
+
+# Get CF team domain
+CF_TEAM=$(curl -s \
+  "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/access/organizations" \
+  -H "Authorization: Bearer ${CF_API_TOKEN}" \
+  | python3 -c "import sys,json; r=json.load(sys.stdin); print(r.get('result',{}).get('auth_domain','<your-team>.cloudflareaccess.com'))" 2>/dev/null)
+
 echo "         https://${CF_TEAM}/cdn-cgi/access/callback"
 echo ""
 echo "    2. Copy the Client ID and Client Secret"
 echo ""
-echo "    3. dash.cloudflare.com → Zero Trust → Settings → Authentication"
-echo "       Add provider → Google → paste Client ID + Secret → Save"
+echo "    3. Go to: dash.cloudflare.com â†’ Zero Trust â†’ Settings â†’ Authentication"
+echo "       Add identity provider â†’ Google"
+echo "       Paste Client ID + Secret â†’ Save"
 echo ""
 echo "    4. Done. hub.theburrow.house will prompt Google login on first visit."
 echo ""
-echo -e "  ${CYN}If anything is wrong${NC}"
+echo -e "  ${CYN}Useful commands${NC}"
 echo "    journalctl -fu pensieve-flask"
+echo "    journalctl -fu pensieve-tunnel"
 echo "    sudo cat /etc/pensieve.env"
-echo "    sudo systemctl restart pensieve-flask pensieve-tunnel"
+echo "    systemctl restart pensieve-flask pensieve-tunnel"
 echo ""
-echo -e "  ${CYN}Migrate existing vault tickets to SQLite (one-time)${NC}"
-echo "    cd ~/pensieve-sms"
-echo '    VAULT_ROOT=$(sudo grep "^VAULT_ROOT=" /etc/pensieve.env | cut -d= -f2-) \'
-echo '      .venv/bin/python -m app.migrate'
-echo ""
+
