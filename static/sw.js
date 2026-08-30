@@ -1,6 +1,6 @@
-// The Burrow — service worker v3
+// The Burrow — service worker v4
 // Caches the app shell; API calls always go to network.
-const CACHE = 'burrow-v3';
+const CACHE = 'burrow-v4';
 const SHELL  = ['/', '/manifest.json'];
 
 self.addEventListener('install', e => {

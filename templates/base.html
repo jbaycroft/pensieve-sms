@@ -607,11 +607,10 @@
 
 // ── Alpine component ──
 function burrow() {
-  // Server detects user from Cloudflare Access email header.
-  // cf_user is set by the Jinja template; fall back to localStorage for local dev.
-  const cfUser = typeof window._cfUser !== 'undefined' ? window._cfUser : null;
+  // User is auto-detected server-side from Google auth (CF Access header).
+  // window._cfUser is injected by Jinja. Fallback to 'John' for local dev.
   return {
-    user:        cfUser || localStorage.getItem('burrow_user') || null,
+    user:        window._cfUser || 'John',
     priority:    'normal',
     openPanel:   null,
     taskBody:    '',
@@ -619,21 +618,6 @@ function burrow() {
     toast:       null,
     submitting:  false,
     _toastTimer: null,
-
-    setUser(u) {
-      this.user      = u;
-      this.openPanel = null;
-      localStorage.setItem('burrow_user', u);
-      this.$nextTick(() => htmx.trigger('#queue-list', 'refresh'));
-    },
-
-    logout() {
-      this.user      = null;
-      this.openPanel = null;
-      this.taskBody  = '';
-      this.priority  = 'normal';
-      localStorage.removeItem('burrow_user');
-    },
 
     showToast(msg) {
       this.toast = msg;
@@ -671,9 +655,7 @@ function burrow() {
       }
     },
 
-    // Load an action panel via HTMX (called from x-init on panel wrapper)
     loadPanel(actionId) {
-      if (!this.user) return;
       htmx.ajax('GET',
         '/api/action-panel/' + actionId + '?user=' + encodeURIComponent(this.user),
         { target: '#panel-' + actionId, swap: 'innerHTML' }

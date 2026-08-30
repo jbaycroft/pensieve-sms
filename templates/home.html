@@ -2,128 +2,9 @@
 {% block content %}
 
   <!-- ══════════════════════════════════════════════════════════ -->
-  <!-- WELCOME SCREEN — shown when no user is selected           -->
+  <!-- MAIN APP — user is auto-detected from Google auth         -->
   <!-- ══════════════════════════════════════════════════════════ -->
-  <div x-show="user === null"
-       x-transition:enter="transition ease-out duration-300"
-       x-transition:enter-start="opacity-0"
-       x-transition:enter-end="opacity-100"
-       x-transition:leave="transition ease-in duration-200"
-       x-transition:leave-start="opacity-100"
-       x-transition:leave-end="opacity-0"
-       x-cloak
-       class="welcome-screen">
-
-    <!-- Logo -->
-    <div class="mb-10">
-      <div class="text-6xl mb-5" style="filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6))">&#127968;</div>
-      <h1 class="pixel-font mb-3"
-          style="font-size:1rem; color:var(--amber); text-shadow:2px 2px 0 rgba(0,0,0,0.7); line-height:1.6">
-        The Burrow
-      </h1>
-      <p class="vt-font text-2xl" style="color:var(--text-muted); letter-spacing:0.05em">
-        theburrow.house
-      </p>
-      <p class="vt-font text-xl mt-3" style="color:var(--text-dim)">
-        &#10022; &nbsp;Who's home tonight?&nbsp; &#10022;
-      </p>
-    </div>
-
-    <!-- Character cards -->
-    <div class="flex gap-5 justify-center" style="width:100%; max-width:340px">
-
-      <!-- ── John ── -->
-      <button @click="setUser('John')" class="char-btn flex-1 p-5 flex flex-col items-center gap-4" aria-label="Sign in as John">
-        <svg viewBox="0 0 60 84" width="72" height="100"
-             xmlns="http://www.w3.org/2000/svg"
-             style="shape-rendering:crispEdges; overflow:visible">
-          <rect x="6"  y="0"  width="12" height="12" fill="#cfc5a8"/>
-          <rect x="42" y="0"  width="12" height="12" fill="#cfc5a8"/>
-          <rect x="6"  y="6"  width="48" height="6"  fill="#e8e0cc"/>
-          <rect x="0"  y="12" width="60" height="18" fill="#e8e0cc"/>
-          <rect x="12" y="18" width="6"  height="6"  fill="#1e1208"/>
-          <rect x="42" y="18" width="6"  height="6"  fill="#1e1208"/>
-          <rect x="14" y="18" width="2"  height="2"  fill="#ffffff"/>
-          <rect x="44" y="18" width="2"  height="2"  fill="#ffffff"/>
-          <rect x="0"  y="30" width="60" height="6"  fill="#e8e0cc"/>
-          <rect x="22" y="32" width="16" height="6"  fill="#1e1208"/>
-          <rect x="26" y="30" width="8"  height="4"  fill="#2d1a10"/>
-          <rect x="6"  y="36" width="48" height="6"  fill="#e0d8be"/>
-          <rect x="14" y="42" width="32" height="6"  fill="#e8e0cc"/>
-          <rect x="4"  y="48" width="52" height="20" fill="#e8e0cc"/>
-          <rect x="4"  y="52" width="52" height="4"  fill="#ddd5be"/>
-          <rect x="52" y="44" width="8"  height="8"  fill="#e0d8be"/>
-          <rect x="4"  y="68" width="12" height="16" fill="#e0d8be"/>
-          <rect x="20" y="68" width="12" height="16" fill="#e0d8be"/>
-          <rect x="36" y="68" width="12" height="16" fill="#e0d8be"/>
-          <rect x="52" y="68" width="8"  height="16" fill="#e0d8be"/>
-          <rect x="6"  y="80" width="8"  height="4"  fill="#c8bfaa"/>
-          <rect x="22" y="80" width="8"  height="4"  fill="#c8bfaa"/>
-          <rect x="38" y="80" width="8"  height="4"  fill="#c8bfaa"/>
-          <rect x="52" y="80" width="6"  height="4"  fill="#c8bfaa"/>
-        </svg>
-        <span class="vt-font text-3xl" style="color:var(--parchment); line-height:1">John</span>
-      </button>
-
-      <!-- ── Jeannie ── -->
-      <button @click="setUser('Jeannie')" class="char-btn flex-1 p-5 flex flex-col items-center gap-4" aria-label="Sign in as Jeannie">
-        <svg viewBox="0 0 60 84" width="72" height="100"
-             xmlns="http://www.w3.org/2000/svg"
-             style="shape-rendering:crispEdges; overflow:visible">
-          <!-- bow (above head) -->
-          <rect x="36" y="-8" width="8"  height="6"  fill="#c43828"/>
-          <rect x="44" y="-8" width="8"  height="6"  fill="#e05040"/>
-          <rect x="52" y="-8" width="8"  height="6"  fill="#c43828"/>
-          <rect x="42" y="-6" width="6"  height="4"  fill="#8b1820"/>
-          <!-- body same as John but slightly brighter -->
-          <rect x="6"  y="0"  width="12" height="12" fill="#cfc5a8"/>
-          <rect x="42" y="0"  width="12" height="12" fill="#cfc5a8"/>
-          <rect x="6"  y="6"  width="48" height="6"  fill="#ece4d0"/>
-          <rect x="0"  y="12" width="60" height="18" fill="#ece4d0"/>
-          <rect x="12" y="18" width="6"  height="6"  fill="#1e1208"/>
-          <rect x="42" y="18" width="6"  height="6"  fill="#1e1208"/>
-          <rect x="14" y="18" width="2"  height="2"  fill="#ffffff"/>
-          <rect x="44" y="18" width="2"  height="2"  fill="#ffffff"/>
-          <!-- lashes -->
-          <rect x="12" y="16" width="2"  height="2"  fill="#1e1208"/>
-          <rect x="16" y="16" width="2"  height="2"  fill="#1e1208"/>
-          <rect x="42" y="16" width="2"  height="2"  fill="#1e1208"/>
-          <rect x="46" y="16" width="2"  height="2"  fill="#1e1208"/>
-          <rect x="0"  y="30" width="60" height="6"  fill="#ece4d0"/>
-          <rect x="22" y="32" width="16" height="6"  fill="#1e1208"/>
-          <rect x="26" y="30" width="8"  height="4"  fill="#2d1a10"/>
-          <rect x="6"  y="36" width="48" height="6"  fill="#e4dcc2"/>
-          <!-- collar -->
-          <rect x="12" y="42" width="36" height="4"  fill="#c43828"/>
-          <rect x="24" y="42" width="12" height="4"  fill="#e05040"/>
-          <rect x="14" y="46" width="32" height="2"  fill="#ece4d0"/>
-          <rect x="4"  y="48" width="52" height="20" fill="#ece4d0"/>
-          <rect x="4"  y="52" width="52" height="4"  fill="#e0d8c0"/>
-          <rect x="52" y="44" width="8"  height="8"  fill="#e4dcc2"/>
-          <rect x="4"  y="68" width="12" height="16" fill="#e4dcc2"/>
-          <rect x="20" y="68" width="12" height="16" fill="#e4dcc2"/>
-          <rect x="36" y="68" width="12" height="16" fill="#e4dcc2"/>
-          <rect x="52" y="68" width="8"  height="16" fill="#e4dcc2"/>
-          <rect x="6"  y="80" width="8"  height="4"  fill="#c8bfaa"/>
-          <rect x="22" y="80" width="8"  height="4"  fill="#c8bfaa"/>
-          <rect x="38" y="80" width="8"  height="4"  fill="#c8bfaa"/>
-          <rect x="52" y="80" width="6"  height="4"  fill="#c8bfaa"/>
-        </svg>
-        <span class="vt-font text-3xl" style="color:var(--parchment); line-height:1">Jeannie</span>
-      </button>
-    </div>
-
-    <p class="vt-font text-lg mt-12" style="color:var(--text-dim)">
-      &#9733; &nbsp;your household quest log&nbsp; &#9733;
-    </p>
-  </div>
-
-  <!-- ══════════════════════════════════════════════════════════ -->
-  <!-- MAIN APP — shown when user is selected                    -->
-  <!-- ══════════════════════════════════════════════════════════ -->
-  <div x-show="user !== null"
-       x-cloak
-       class="max-w-lg mx-auto px-4 pb-32"
+  <div class="max-w-lg mx-auto px-4 pb-32"
        style="padding-top: max(1.5rem, env(safe-area-inset-top))">
 
     <!-- ── Header ── -->
@@ -136,17 +17,6 @@
         <p class="vt-font text-2xl" style="color:var(--text-muted)">
           <span x-text="user === 'John' ? '&#10022; Morning, John.' : '&#10022; Hey Jeannie!'"></span>
         </p>
-      </div>
-
-      <!-- User switcher + leave -->
-      <div class="flex flex-col items-end gap-2 mt-1 shrink-0 ml-3">
-        <div class="pixel-panel-sm flex p-1 gap-1">
-          <button @click="setUser('John')"
-            :class="user==='John' ? 'user-tab active' : 'user-tab'">John</button>
-          <button @click="setUser('Jeannie')"
-            :class="user==='Jeannie' ? 'user-tab active' : 'user-tab'">Jeannie</button>
-        </div>
-        <button @click="logout()" class="btn-ghost">&#8592; leave</button>
       </div>
     </div>
 
