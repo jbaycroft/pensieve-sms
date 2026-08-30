@@ -10,11 +10,11 @@ _SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "same-origin",
-    # CSP: allow inline styles/scripts, same-origin assets, HTMX CDN.
-    # Alpine removed → no more unsafe-eval needed. CSP-safe vanilla JS.
+    # CSP: all scripts/styles self-hosted or inline. No external CDN deps
+    # except Google Fonts (style-src + font-src only, not connect-src).
     "Content-Security-Policy": (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://unpkg.com; "
+        "script-src 'self' 'unsafe-inline'; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "img-src 'self' data:; "
         "connect-src 'self'; "
