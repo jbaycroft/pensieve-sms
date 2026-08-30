@@ -15,7 +15,7 @@
           &#8962; The Burrow
         </h1>
         <p class="vt-font text-2xl" style="color:var(--text-muted)">
-          <span x-text="user === 'John' ? '&#10022; Morning, John.' : '&#10022; Hey Jeannie!'"></span>
+          <span x-text="user === 'John' ? '&#10022; Morning, John.' : '&#10022; Hey Jeannie!'">{% if cf_user == 'John' %}&#10022; Morning, John.{% elif cf_user %}&#10022; Hey Jeannie!{% else %}&#10022; Welcome.{% endif %}</span>
         </p>
       </div>
     </div>

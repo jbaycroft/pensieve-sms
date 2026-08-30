@@ -1,6 +1,6 @@
-// The Burrow — service worker v5
+// The Burrow — service worker v6
 // Network-first for shell pages; API calls bypass SW entirely.
-const CACHE = 'burrow-v5';
+const CACHE = 'burrow-v6';
 const SHELL = ['/', '/manifest.json'];
 
 self.addEventListener('install', e => {
