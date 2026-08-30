@@ -15,7 +15,7 @@
           &#8962; The Burrow
         </h1>
         <p class="vt-font text-2xl" style="color:var(--text-muted)">
-          <span x-text="user === 'John' ? '&#10022; Morning, John.' : '&#10022; Hey Jeannie!'">{% if cf_user == 'John' %}&#10022; Morning, John.{% elif cf_user %}&#10022; Hey Jeannie!{% else %}&#10022; Welcome.{% endif %}</span>
+          {% if cf_user == 'John' %}&#10022; Morning, John.{% elif cf_user %}&#10022; Hey Jeannie!{% else %}&#10022; Welcome.{% endif %}
         </p>
       </div>
     </div>
@@ -26,12 +26,9 @@
       <div class="grid grid-cols-3 gap-3">
         {% for action in actions %}
         <button
-          @click="
-            openPanel = (openPanel === '{{ action.id }}') ? null : '{{ action.id }}';
-            if (openPanel === '{{ action.id }}') loadPanel('{{ action.id }}');
-          "
-          :class="openPanel === '{{ action.id }}' ? 'action-btn active' : 'action-btn'"
-          class="p-3 text-center flex flex-col items-center justify-center gap-2"
+          onclick="Burrow.togglePanel('{{ action.id }}')"
+          id="btn-{{ action.id }}"
+          class="action-btn p-3 text-center flex flex-col items-center justify-center gap-2"
           aria-label="{{ action.label }}">
           <div class="text-3xl leading-none">{{ action.icon }}</div>
           <div class="text-action-label">{{ action.label }}</div>
@@ -42,18 +39,7 @@
 
     <!-- ── Action panels (HTMX loaded on demand) ── -->
     {% for action in actions %}
-    <div
-      x-show="openPanel === '{{ action.id }}'"
-      x-transition:enter="transition ease-out duration-150"
-      x-transition:enter-start="opacity-0 -translate-y-1"
-      x-transition:enter-end="opacity-100 translate-y-0"
-      x-transition:leave="transition ease-in duration-100"
-      x-transition:leave-start="opacity-100"
-      x-transition:leave-end="opacity-0"
-      x-cloak
-      @close-panel.stop="openPanel = null"
-      @fire-action.stop="fireAction($event.detail.actionId, $event.detail.payload)"
-      class="mt-3 mb-2">
+    <div id="wrap-{{ action.id }}" class="mt-3 mb-2" style="display:none">
       <div id="panel-{{ action.id }}" class="pixel-panel p-5">
         <div class="vt-font text-xl text-center" style="color:var(--text-dim)">Loading&#8230;</div>
       </div>
@@ -64,16 +50,13 @@
     <div class="mt-5 mb-3">
       <div class="section-label mb-3">&#9888; Priority</div>
       <div class="grid grid-cols-3 gap-2">
-        <button @click="priority = 'normal'"
-          :class="priority === 'normal' ? 'priority-pill p-normal' : 'priority-pill'">
+        <button onclick="Burrow.setPriority('normal')" id="pri-normal" class="priority-pill p-normal">
           <span>&#9898;</span><span>Normal</span>
         </button>
-        <button @click="priority = 'high'"
-          :class="priority === 'high' ? 'priority-pill p-high' : 'priority-pill'">
+        <button onclick="Burrow.setPriority('high')" id="pri-high" class="priority-pill">
           <span>&#9733;</span><span>High</span>
         </button>
-        <button @click="priority = 'urgent'"
-          :class="priority === 'urgent' ? 'priority-pill p-urgent' : 'priority-pill'">
+        <button onclick="Burrow.setPriority('urgent')" id="pri-urgent" class="priority-pill">
           <span>&#8252;</span><span>Urgent</span>
         </button>
       </div>
@@ -83,15 +66,15 @@
     <div class="pixel-panel p-4 mb-6">
       <div class="section-label mb-3">&#9998; Add Task</div>
       <input type="text"
-        x-model="taskBody"
-        @keydown.enter="submitTask()"
+        id="task-body"
+        onkeydown="if(event.key==='Enter')Burrow.submitTask()"
         placeholder="What needs doing?"
         autocomplete="off"
         inputmode="text"
         aria-label="Task description"
         class="burrow-input mb-3">
       <div class="flex gap-2">
-        <select x-model="taskDomain" class="burrow-select flex-1" aria-label="Task domain">
+        <select id="task-domain" class="burrow-select flex-1" aria-label="Task domain">
           <option value="">Domain: auto</option>
           <option value="w">Work</option>
           <option value="h">Hydroponics</option>
@@ -100,8 +83,7 @@
           <option value="ho">Hobby</option>
           <option value="c">Connection</option>
         </select>
-        <button @click="submitTask()" class="btn-primary" :disabled="submitting"
-          x-text="submitting ? 'Sending…' : 'Queue it'"></button>
+        <button onclick="Burrow.submitTask()" id="btn-submit" class="btn-primary">Queue it</button>
       </div>
     </div>
 

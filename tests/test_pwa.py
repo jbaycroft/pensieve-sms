@@ -95,9 +95,12 @@ def test_home_contains_quick_action_buttons(client):
 
 
 def test_home_contains_greeting_names(client):
-    """User names appear in greeting text (auto-detected from Google auth)."""
-    r = client.get("/")
+    """User names appear in server-rendered greeting (auto-detected from Google auth)."""
+    # John greeting via navmusic header
+    r = client.get("/", headers={"Cf-Access-Authenticated-User-Email": "navmusic@gmail.com"})
     assert b"John" in r.data
+    # Jeannie greeting via jbaycroft1 header
+    r = client.get("/", headers={"Cf-Access-Authenticated-User-Email": "jbaycroft1@gmail.com"})
     assert b"Jeannie" in r.data
 
 

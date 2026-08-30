@@ -52,8 +52,7 @@
 
     <!-- Done button -->
     <button class="btn-done"
-      @click="completeTask('{{ t.id }}')"
-      :disabled="submitting"
+      onclick="Burrow.completeTask('{{ t.id }}')"
       aria-label="Mark task done"
       title="Mark done"
       style="align-self:center">
