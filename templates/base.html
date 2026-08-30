@@ -143,7 +143,7 @@
 
     /* ── Night sky ── */
     .night-sky {
-      position: fixed; inset: 0; z-index: 0;
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background:
         radial-gradient(ellipse at 20% 10%, rgba(30,60,20,0.25) 0%, transparent 50%),
         radial-gradient(ellipse at 80% 80%, rgba(20,30,60,0.2) 0%, transparent 50%),
@@ -585,17 +585,17 @@
 
 <div class="content-layer">
   {% block content %}{% endblock %}
+</div>
 
-  <!-- ── Toast notification ── -->
-  <div id="toast-box"
-    class="toast-box fixed left-4 right-4 max-w-sm mx-auto px-5 py-4 z-50"
-    role="status"
-    aria-live="polite"
-    style="display:none; bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem)); transition: opacity 0.2s ease-out, transform 0.2s ease-out;">
-    <div class="flex items-start gap-3">
-      <span class="text-lg shrink-0 leading-none mt-0.5">&#10022;</span>
-      <span id="toast-text" class="vt-font text-xl leading-snug" style="color:var(--parchment)"></span>
-    </div>
+<!-- Toast is OUTSIDE content-layer so its z-index isn't trapped in a stacking context -->
+<div id="toast-box"
+  class="toast-box fixed left-4 right-4 max-w-sm mx-auto px-5 py-4"
+  role="status"
+  aria-live="polite"
+  style="display:none; z-index:9999; bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem)); transition: opacity 0.2s ease-out, transform 0.2s ease-out;">
+  <div class="flex items-start gap-3">
+    <span class="text-lg shrink-0 leading-none mt-0.5">&#10022;</span>
+    <span id="toast-text" class="vt-font text-xl leading-snug" style="color:var(--parchment)"></span>
   </div>
 </div>
 
@@ -625,8 +625,14 @@ var Burrow = (function() {
   var user       = window._cfUser || 'John';
   var priority   = 'normal';
   var openPanel  = null;
-  var submitting = false;
   var toastTimer = null;
+
+  // Each action type has its own lock to prevent double-submits
+  // but not block unrelated actions. Safety timeout auto-unlocks
+  // after 8 seconds so a failed request never deadlocks the UI.
+  var locks = {};
+  function lock(name)   { if (locks[name]) return false; locks[name] = true; setTimeout(function(){ locks[name] = false; }, 8000); return true; }
+  function unlock(name) { locks[name] = false; }
 
   function showToast(msg) {
     var box  = document.getElementById('toast-box');
@@ -634,6 +640,8 @@ var Burrow = (function() {
     if (!box || !text) return;
     text.textContent = msg;
     box.style.display = 'block';
+    // Force reflow so transition fires
+    box.offsetHeight;
     box.style.opacity = '1';
     box.style.transform = 'translateY(0)';
     clearTimeout(toastTimer);
@@ -642,6 +650,21 @@ var Burrow = (function() {
       box.style.transform = 'translateY(0.5rem)';
       setTimeout(function() { box.style.display = 'none'; }, 200);
     }, 4500);
+  }
+
+  // Wrapper for fetch that handles CF Access redirects gracefully.
+  // CF Access may return a 302 → login page HTML when the session
+  // expires. fetch() follows the redirect, gets HTML, and res.json()
+  // throws. This wrapper detects non-JSON responses.
+  function apiFetch(url, opts) {
+    opts.credentials = 'same-origin';
+    return fetch(url, opts).then(function(res) {
+      var ct = res.headers.get('content-type') || '';
+      if (ct.indexOf('application/json') === -1) {
+        throw new Error('Non-JSON response (status ' + res.status + ')');
+      }
+      return res.json();
+    });
   }
 
   function setPriority(p) {
@@ -712,20 +735,19 @@ var Burrow = (function() {
     var domainEl = document.getElementById('task-domain');
     var btnEl    = document.getElementById('btn-submit');
     var body = (bodyEl ? bodyEl.value : '').trim();
-    if (!body || submitting) return;
-    submitting = true;
-    if (btnEl) btnEl.textContent = 'Sending\u2026';
+    if (!body) { showToast('Type something first'); return; }
+    if (!lock('submit')) return;
+    if (btnEl) { btnEl.textContent = 'Sending\u2026'; btnEl.disabled = true; }
 
     var prefix    = priority === 'urgent' ? '!! '
                   : priority === 'high'   ? '! ' : '';
     var domPrefix = domainEl && domainEl.value ? domainEl.value + ': ' : '';
 
-    fetch('/api/task', {
+    apiFetch('/api/task', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ body: prefix + domPrefix + body, user: user }),
     })
-    .then(function(res) { return res.json(); })
     .then(function(data) {
       if (data.ticket_id) {
         showToast('\u2605 Added: ' + data.enhanced);
@@ -737,28 +759,26 @@ var Burrow = (function() {
         showToast('\u2717 ' + (data.error || 'something went wrong'));
       }
     })
-    .catch(function() { showToast('\u2717 Network error \u2014 try again'); })
+    .catch(function(e) { showToast('\u2717 ' + (e.message || 'Network error')); })
     .finally(function() {
-      submitting = false;
-      if (btnEl) btnEl.textContent = 'Queue it';
+      unlock('submit');
+      if (btnEl) { btnEl.textContent = 'Queue it'; btnEl.disabled = false; }
     });
   }
 
   function fireAction(actionId, payload) {
-    if (submitting) return;
-    submitting = true;
+    if (!lock('action')) return;
     var p = {};
     for (var k in payload) p[k] = payload[k];
     p.action_id = actionId;
     p.user = user;
     p.priority = priority;
 
-    fetch('/api/quick-action', {
+    apiFetch('/api/quick-action', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(p),
     })
-    .then(function(res) { return res.json(); })
     .then(function(data) {
       if (data.ticket_id) {
         showToast('\u2605 Added: ' + data.enhanced);
@@ -769,18 +789,16 @@ var Burrow = (function() {
         showToast('\u2717 ' + (data.error || 'something went wrong'));
       }
     })
-    .catch(function() { showToast('\u2717 Network error \u2014 try again'); })
-    .finally(function() { submitting = false; });
+    .catch(function(e) { showToast('\u2717 ' + (e.message || 'Network error')); })
+    .finally(function() { unlock('action'); });
   }
 
   function completeTask(ticketId) {
-    if (submitting) return;
-    submitting = true;
-    fetch('/api/task/' + ticketId + '/done', {
+    if (!lock('done-' + ticketId)) return;
+    apiFetch('/api/task/' + ticketId + '/done', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     })
-    .then(function(res) { return res.json(); })
     .then(function(data) {
       if (data.ok) {
         showToast('\u2714 Quest complete!');
@@ -789,8 +807,8 @@ var Burrow = (function() {
         showToast('\u2717 ' + (data.error || 'something went wrong'));
       }
     })
-    .catch(function() { showToast('\u2717 Network error \u2014 try again'); })
-    .finally(function() { submitting = false; });
+    .catch(function(e) { showToast('\u2717 ' + (e.message || 'Network error')); })
+    .finally(function() { unlock('done-' + ticketId); });
   }
 
   return {
