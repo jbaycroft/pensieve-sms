@@ -14,6 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>window._cfUser = {{ cf_user | tojson }};</script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="https://unpkg.com/htmx.org@2.0.3"></script>
   <style>
@@ -606,9 +607,11 @@
 
 // ── Alpine component ──
 function burrow() {
+  // Server detects user from Cloudflare Access email header.
+  // cf_user is set by the Jinja template; fall back to localStorage for local dev.
+  const cfUser = typeof window._cfUser !== 'undefined' ? window._cfUser : null;
   return {
-    // null = not logged in (welcome screen)
-    user:        localStorage.getItem('burrow_user') || null,
+    user:        cfUser || localStorage.getItem('burrow_user') || null,
     priority:    'normal',
     openPanel:   null,
     taskBody:    '',

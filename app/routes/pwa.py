@@ -17,6 +17,7 @@ _MAX_BODY_LEN = 500
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
+
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 def _queue_tickets(limit: int = 20) -> list[dict]:
@@ -193,3 +194,8 @@ def manifest():
 @pwa_bp.route("/sw.js")
 def service_worker():
     return current_app.send_static_file("sw.js")
+
+
+@pwa_bp.route("/favicon.ico")
+def favicon():
+    return current_app.send_static_file("favicon.ico")

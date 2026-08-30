@@ -43,6 +43,20 @@ def create_app() -> Flask:
     app.register_blueprint(pwa_bp)
     app.register_blueprint(health_bp)
 
+    # ── inject authenticated user into every template ─────────────────────────
+    _email_user_map = {
+        "navmusic@gmail.com":   "John",
+        "jdepatie1@gmail.com":  "Jeannie",
+        "jbaycroft1@gmail.com": "Jeannie",
+    }
+
+    @app.context_processor
+    def inject_cf_user() -> dict:
+        from flask import request as req
+        email = req.headers.get("Cf-Access-Authenticated-User-Email", "").strip().lower()
+        user = _email_user_map.get(email, "John") if email else None
+        return {"cf_user": user}
+
     # ── security headers ──────────────────────────────────────────────────────
     @app.after_request
     def add_security_headers(response: Response) -> Response:
