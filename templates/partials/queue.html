@@ -21,32 +21,26 @@
 
     <!-- Task body -->
     <div class="flex-1 min-w-0">
-      <div style="font-family:'Inter',sans-serif; font-size:0.875rem; font-weight:500;
-                  color:var(--parchment); line-height:1.4; margin-bottom:4px">
+      <div class="text-body" style="margin-bottom:4px">
         {{ t.title }}
       </div>
       <div class="flex items-center gap-2 flex-wrap">
         {% if t.domain %}
-        <span style="font-family:'Inter',sans-serif; font-size:0.68rem; font-weight:600;
-                     color:var(--text-dim);
-                     background:rgba(196,154,47,0.08);
-                     border:1px solid rgba(196,154,47,0.18);
-                     padding:1px 7px; border-radius:2px">{{ t.domain }}</span>
+        <span class="badge">{{ t.domain }}</span>
         {% endif %}
         {% if t.est_min %}
         <span class="vt-font" style="font-size:1.05rem; color:var(--text-dim)">{{ t.est_min }}m</span>
         {% endif %}
         {% if t.status == 'active' %}
-        <span style="font-family:'Inter',sans-serif; font-size:0.68rem; font-weight:700;
-                     color:var(--green-bright)">● active</span>
+        <span class="text-caption" style="font-weight:700; color:var(--green-bright)">● active</span>
         {% endif %}
       </div>
     </div>
 
     <!-- HEAD badge (first item in queue) -->
     {% if loop.first %}
-    <span class="shrink-0"
-      style="font-family:'Inter',sans-serif; font-size:0.62rem; font-weight:700;
+    <span class="shrink-0 text-caption"
+      style="font-weight:700;
              background:rgba(126,200,80,0.1);
              border:1px solid rgba(126,200,80,0.3);
              color:var(--green-bright);
@@ -55,6 +49,18 @@
       HEAD
     </span>
     {% endif %}
+
+    <!-- Done button -->
+    <button class="btn-done"
+      @click="completeTask('{{ t.id }}')"
+      :disabled="submitting"
+      aria-label="Mark task done"
+      title="Mark done"
+      style="align-self:center">
+      <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="var(--text-dim)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 6l3 3 5-6"/>
+      </svg>
+    </button>
   </div>
   {% endfor %}
 
@@ -62,8 +68,7 @@
   <!-- Empty state -->
   <div class="pixel-panel p-8 text-center">
     <div class="text-5xl mb-4" style="filter:drop-shadow(0 2px 6px rgba(0,0,0,0.5))">🌱</div>
-    <div style="font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600;
-                color:var(--text-dim); margin-bottom:8px">Quest log is empty.</div>
+    <div class="text-body" style="color:var(--text-dim); margin-bottom:8px">Quest log is empty.</div>
     <div class="vt-font text-xl" style="color:var(--text-dim)">Enjoy the day!</div>
   </div>
 {% endif %}

@@ -403,6 +403,77 @@
         max(8rem, calc(env(safe-area-inset-bottom) + 6rem));
       text-align: center;
     }
+
+    /* ── Reusable text utilities ── */
+    .text-body {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--parchment);
+      line-height: 1.4;
+    }
+    .text-caption {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--text-dim);
+    }
+    .text-panel-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--amber);
+    }
+    .text-action-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--parchment-dk);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+    .text-panel-btn {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--parchment-dk);
+    }
+    .badge {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      background: rgba(196,154,47,0.08);
+      border: 1px solid rgba(196,154,47,0.18);
+      padding: 1px 7px;
+      border-radius: 2px;
+    }
+
+    /* ── Done button (quest items) ── */
+    .btn-done {
+      width: 22px;
+      height: 22px;
+      border-radius: 3px;
+      border: 2px solid var(--border-dark);
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 0;
+    }
+    .btn-done:hover {
+      border-color: var(--green-mid);
+      background: rgba(126,200,80,0.1);
+    }
+    .btn-done:active {
+      background: var(--green-dark);
+      border-color: var(--green-bright);
+    }
   </style>
 </head>
 <body>
@@ -502,6 +573,8 @@
     x-transition:leave-end="opacity-0 translate-y-2"
     x-cloak
     class="toast-box fixed left-4 right-4 max-w-sm mx-auto px-5 py-4 z-50"
+    role="status"
+    aria-live="polite"
     style="bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem))">
     <div class="flex items-start gap-3">
       <span class="text-lg shrink-0 leading-none mt-0.5">&#10022;</span>
@@ -541,12 +614,14 @@ function burrow() {
     taskBody:    '',
     taskDomain:  '',
     toast:       null,
+    submitting:  false,
     _toastTimer: null,
 
     setUser(u) {
       this.user      = u;
       this.openPanel = null;
       localStorage.setItem('burrow_user', u);
+      this.$nextTick(() => htmx.trigger('#queue-list', 'refresh'));
     },
 
     logout() {
@@ -565,24 +640,31 @@ function burrow() {
 
     async submitTask() {
       const body = this.taskBody.trim();
-      if (!body) return;
-      const prefix    = this.priority === 'urgent' ? '!! '
-                      : this.priority === 'high'   ? '! ' : '';
-      const domPrefix = this.taskDomain ? this.taskDomain + ': ' : '';
-      const res       = await fetch('/api/task', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ body: prefix + domPrefix + body, user: this.user }),
-      });
-      const data = await res.json();
-      if (data.ticket_id) {
-        this.showToast('\u2605 Added: ' + data.enhanced);
-        this.taskBody   = '';
-        this.taskDomain = '';
-        this.priority   = 'normal';
-        htmx.trigger('#queue-list', 'refresh');
-      } else {
-        this.showToast('\u2717 ' + (data.error || 'something went wrong'));
+      if (!body || this.submitting) return;
+      this.submitting = true;
+      try {
+        const prefix    = this.priority === 'urgent' ? '!! '
+                        : this.priority === 'high'   ? '! ' : '';
+        const domPrefix = this.taskDomain ? this.taskDomain + ': ' : '';
+        const res       = await fetch('/api/task', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ body: prefix + domPrefix + body, user: this.user }),
+        });
+        const data = await res.json();
+        if (data.ticket_id) {
+          this.showToast('\u2605 Added: ' + data.enhanced);
+          this.taskBody   = '';
+          this.taskDomain = '';
+          this.priority   = 'normal';
+          htmx.trigger('#queue-list', 'refresh');
+        } else {
+          this.showToast('\u2717 ' + (data.error || 'something went wrong'));
+        }
+      } catch (e) {
+        this.showToast('\u2717 Network error — try again');
+      } finally {
+        this.submitting = false;
       }
     },
 
@@ -596,22 +678,52 @@ function burrow() {
     },
 
     async fireAction(actionId, payload) {
-      const res  = await fetch('/api/quick-action', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          action_id: actionId, user: this.user,
-          priority:  this.priority, ...payload,
-        }),
-      });
-      const data = await res.json();
-      if (data.ticket_id) {
-        this.showToast('\u2605 Added: ' + data.enhanced);
-        this.openPanel = null;
-        this.priority  = 'normal';
-        htmx.trigger('#queue-list', 'refresh');
-      } else {
-        this.showToast('\u2717 ' + (data.error || 'something went wrong'));
+      if (this.submitting) return;
+      this.submitting = true;
+      try {
+        const res  = await fetch('/api/quick-action', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            action_id: actionId, user: this.user,
+            priority:  this.priority, ...payload,
+          }),
+        });
+        const data = await res.json();
+        if (data.ticket_id) {
+          this.showToast('\u2605 Added: ' + data.enhanced);
+          this.openPanel = null;
+          this.priority  = 'normal';
+          htmx.trigger('#queue-list', 'refresh');
+        } else {
+          this.showToast('\u2717 ' + (data.error || 'something went wrong'));
+        }
+      } catch (e) {
+        this.showToast('\u2717 Network error — try again');
+      } finally {
+        this.submitting = false;
+      }
+    },
+
+    async completeTask(ticketId) {
+      if (this.submitting) return;
+      this.submitting = true;
+      try {
+        const res = await fetch('/api/task/' + ticketId + '/done', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await res.json();
+        if (data.ok) {
+          this.showToast('\u2714 Quest complete!');
+          htmx.trigger('#queue-list', 'refresh');
+        } else {
+          this.showToast('\u2717 ' + (data.error || 'something went wrong'));
+        }
+      } catch (e) {
+        this.showToast('\u2717 Network error — try again');
+      } finally {
+        this.submitting = false;
       }
     },
   };

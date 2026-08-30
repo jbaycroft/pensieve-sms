@@ -1,24 +1,23 @@
 {% if action.type == 'coffee' %}
 {# ── Coffee order panel ── #}
+{# Use x-data for local state only; communicate up via Alpine $dispatch #}
 <div x-data="{
   size:     '{{ prefs.size }}',
   drink:    '{{ prefs.drink }}',
-  notes:    '{{ prefs.notes | replace("'", "\\'") }}',
+  notes:    '{{ prefs.notes | replace("'", "\\'") | replace('\n', ' ') | replace('\r', '') }}',
   remember: true,
-  submit() { $root.fireAction('coffee', {size:this.size, drink:this.drink, notes:this.notes, remember:this.remember}); }
 }">
 
   <div class="flex items-center justify-between mb-5">
     <div>
-      <div style="font-family:'Inter',sans-serif; font-size:0.8rem; font-weight:700;
-                  letter-spacing:0.08em; color:var(--amber); text-transform:uppercase">
+      <div class="section-label" style="letter-spacing:0.08em; color:var(--amber)">
         ☕ Coffee Order
       </div>
       <div class="vt-font text-xl mt-1" style="color:var(--text-muted)">
-        for <span style="color:var(--green-bright)" x-text="$root.user"></span>
+        for <span style="color:var(--green-bright)">{{ user }}</span>
       </div>
     </div>
-    <button @click="$root.openPanel=null"
+    <button @click="$dispatch('close-panel')"
       class="btn-ghost" style="font-size:0.8rem">✕ close</button>
   </div>
 
@@ -29,8 +28,7 @@
       {% for s in ['small','medium','large'] %}
       <button @click="size='{{ s }}'"
         :class="size==='{{ s }}' ? 'action-btn active' : 'action-btn'"
-        class="py-2 capitalize"
-        style="font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600; color:var(--parchment-dk)">{{ s }}</button>
+        class="py-2 capitalize text-panel-btn">{{ s }}</button>
       {% endfor %}
     </div>
   </div>
@@ -42,8 +40,7 @@
       {% for d in ['drip','espresso','latte','cappuccino','americano','cold brew'] %}
       <button @click="drink='{{ d }}'"
         :class="drink==='{{ d }}' ? 'action-btn active' : 'action-btn'"
-        class="px-3 py-2 capitalize"
-        style="font-family:'Inter',sans-serif; font-size:0.8rem; font-weight:600; color:var(--parchment-dk)">{{ d }}</button>
+        class="px-3 py-2 capitalize text-panel-btn" style="font-size:0.8rem">{{ d }}</button>
       {% endfor %}
     </div>
   </div>
@@ -54,6 +51,7 @@
     <input type="text" x-model="notes"
       placeholder="oat milk, 1 sugar…"
       autocomplete="off"
+      aria-label="Coffee order notes"
       class="burrow-input">
   </div>
 
@@ -61,10 +59,10 @@
   <div class="flex items-center justify-between gap-4">
     <label class="flex items-center gap-2 cursor-pointer select-none">
       <input type="checkbox" x-model="remember">
-      <span style="font-family:'Inter',sans-serif; font-size:0.8rem; font-weight:500;
-                   color:var(--text-muted)">Remember</span>
+      <span class="text-caption" style="font-size:0.8rem; font-weight:500; color:var(--text-muted)">Remember</span>
     </label>
-    <button @click="submit()" class="btn-primary">Queue it</button>
+    <button @click="$dispatch('fire-action', {actionId:'coffee', payload:{size, drink, notes, remember}})"
+      class="btn-primary">Queue it</button>
   </div>
 </div>
 
@@ -72,13 +70,13 @@
 {# ── One-tap prefilled action ── #}
 <div>
   <div class="flex items-center justify-between mb-4">
-    <div style="font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:700; color:var(--amber)">
+    <div class="text-panel-title">
       {{ action.icon }} {{ action.label }}
     </div>
-    <button @click="$root.openPanel=null" class="btn-ghost" style="font-size:0.8rem">✕ close</button>
+    <button @click="$dispatch('close-panel')" class="btn-ghost" style="font-size:0.8rem">✕ close</button>
   </div>
   <p class="vt-font text-xl mb-5" style="color:var(--parchment-dk)">{{ action.task }}</p>
-  <button @click="$root.fireAction('{{ action.id }}', {})" class="btn-primary w-full">
+  <button @click="$dispatch('fire-action', {actionId:'{{ action.id }}', payload:{}})" class="btn-primary w-full">
     Queue it
   </button>
 </div>
@@ -87,19 +85,20 @@
 {# ── Freeform action ── #}
 <div x-data="{ body: '' }">
   <div class="flex items-center justify-between mb-4">
-    <div style="font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:700; color:var(--amber)">
+    <div class="text-panel-title">
       {{ action.icon }} {{ action.label }}
     </div>
-    <button @click="$root.openPanel=null" class="btn-ghost" style="font-size:0.8rem">✕ close</button>
+    <button @click="$dispatch('close-panel')" class="btn-ghost" style="font-size:0.8rem">✕ close</button>
   </div>
   <input type="text"
     x-model="body"
-    @keydown.enter="$root.fireAction('{{ action.id }}', {body})"
+    @keydown.enter="$dispatch('fire-action', {actionId:'{{ action.id }}', payload:{body}})"
     placeholder="What needs doing?"
     autocomplete="off"
+    aria-label="Task description"
     class="burrow-input mb-3"
     x-init="$nextTick(() => $el.focus())">
-  <button @click="$root.fireAction('{{ action.id }}', {body})" class="btn-primary w-full">
+  <button @click="$dispatch('fire-action', {actionId:'{{ action.id }}', payload:{body}})" class="btn-primary w-full">
     Queue it
   </button>
 </div>

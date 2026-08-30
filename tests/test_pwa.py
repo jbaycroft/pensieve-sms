@@ -438,3 +438,35 @@ def test_quick_action_invalid_user_returns_400(client):
 def test_quick_action_empty_action_id_returns_400(client):
     r = client.post('/api/quick-action', json={'action_id': '', 'user': 'John'})
     assert r.status_code == 400
+
+
+# ── complete task ─────────────────────────────────────────────────────────────
+
+def test_complete_task_removes_from_queue(client):
+    """POST /api/task/<id>/done should mark the ticket done and remove it from the queue."""
+    # Verify ticket exists in queue first
+    r = client.get('/api/queue')
+    assert b'TKT-EXISTING' in r.data or b'Existing task' in r.data
+
+    r = client.post('/api/task/TKT-EXISTING/done', json={})
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data['ok'] is True
+    assert data['ticket_id'] == 'TKT-EXISTING'
+
+    # Queue should now be empty
+    r = client.get('/api/queue')
+    assert b'Existing task' not in r.data
+
+
+def test_complete_task_invalid_id_returns_400(client):
+    r = client.post('/api/task/../../../etc/passwd/done', json={})
+    assert r.status_code in (400, 404)
+
+
+def test_complete_task_updates_ticket_status(client):
+    """After completion, the ticket should have status='done' in the database."""
+    client.post('/api/task/TKT-EXISTING/done', json={})
+    ticket = db_mod.get_ticket('TKT-EXISTING')
+    assert ticket is not None
+    assert ticket['status'] == 'done'

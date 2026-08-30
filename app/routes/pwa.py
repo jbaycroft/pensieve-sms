@@ -100,6 +100,19 @@ def add_task():
         return jsonify({"error": str(e)}), 500
 
 
+@pwa_bp.route("/api/task/<ticket_id>/done", methods=["POST"])
+def complete_task(ticket_id: str):
+    if not _SAFE_ID.match(ticket_id):
+        return jsonify({"error": "invalid ticket_id"}), 400
+    try:
+        from ..vault import close_ticket
+        close_ticket(ticket_id, actor="pwa")
+        return jsonify({"ok": True, "ticket_id": ticket_id})
+    except Exception as e:
+        log.error("complete_task: %s", e, exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
 @pwa_bp.route("/api/quick-action", methods=["POST"])
 def quick_action():
     data      = request.get_json(force=True) or {}
@@ -168,8 +181,8 @@ def manifest():
         "short_name":       "Burrow",
         "start_url":        "/",
         "display":          "standalone",
-        "background_color": "#0f0f1a",
-        "theme_color":      "#9b1d20",
+        "background_color": "#0a1520",
+        "theme_color":      "#0d1b0a",
         "icons": [
             {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png"},
             {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png"},
