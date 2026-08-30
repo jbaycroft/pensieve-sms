@@ -193,7 +193,12 @@ def manifest():
 
 @pwa_bp.route("/sw.js")
 def service_worker():
-    return current_app.send_static_file("sw.js")
+    resp = current_app.send_static_file("sw.js")
+    # SW files must never be HTTP-cached — the browser byte-diffs on every
+    # navigation to detect updates.  no-store prevents stale SW files.
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    resp.headers["Content-Type"] = "application/javascript"
+    return resp
 
 
 @pwa_bp.route("/favicon.ico")

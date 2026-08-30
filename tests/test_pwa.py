@@ -94,7 +94,8 @@ def test_home_contains_quick_action_buttons(client):
     assert b"Dogs" in html
 
 
-def test_home_contains_user_toggle(client):
+def test_home_contains_greeting_names(client):
+    """User names appear in greeting text (auto-detected from Google auth)."""
     r = client.get("/")
     assert b"John" in r.data
     assert b"Jeannie" in r.data

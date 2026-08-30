@@ -152,35 +152,6 @@
         0 0 14px rgba(74,138,40,0.35);
     }
 
-    /* ── Character selection (welcome screen) ── */
-    .char-btn {
-      background: var(--wood-mid);
-      border: 3px solid var(--border-dark);
-      box-shadow:
-        inset 2px 2px 0 var(--border-gold),
-        inset -2px -2px 0 #3a2008,
-        4px 4px 0 rgba(0,0,0,0.55);
-      border-radius: 4px;
-      cursor: pointer;
-      transition: all 0.13s;
-      position: relative;
-    }
-    .char-btn:hover {
-      border-color: var(--border-gold);
-      transform: translateY(-4px);
-      box-shadow:
-        inset 2px 2px 0 var(--border-gold),
-        inset -2px -2px 0 #3a2008,
-        4px 8px 0 rgba(0,0,0,0.55);
-    }
-    .char-btn:active {
-      transform: translateY(2px);
-      box-shadow:
-        inset 2px 2px 0 #3a2008,
-        inset -2px -2px 0 var(--border-gold),
-        2px 2px 0 rgba(0,0,0,0.4);
-    }
-
     /* ── Form inputs ── */
     .burrow-input {
       background: var(--wood-dark);
@@ -299,28 +270,6 @@
     .quest-item.p-high   { border-left-color: var(--amber); }
     .quest-item.p-normal { border-left-color: var(--border-dark); }
 
-    /* ── User tab toggle ── */
-    .user-tab {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.8rem;
-      font-weight: 700;
-      border-radius: 2px;
-      padding: 7px 14px;
-      min-height: 36px;
-      cursor: pointer;
-      border: 2px solid transparent;
-      transition: all 0.1s;
-      color: var(--text-muted);
-      background: transparent;
-    }
-    .user-tab:hover { color: var(--parchment-dk); }
-    .user-tab.active {
-      background: var(--green-dark);
-      border-color: var(--green-mid);
-      color: var(--parchment);
-      box-shadow: inset 1px 1px 0 rgba(126,200,80,0.3), 1px 2px 0 rgba(0,0,0,0.4);
-    }
-
     /* ── Section labels ── */
     .section-label {
       font-family: 'Inter', sans-serif;
@@ -389,20 +338,6 @@
     input[type="checkbox"] {
       accent-color: var(--green-mid);
       width: 18px; height: 18px; cursor: pointer;
-    }
-
-    /* ── Welcome screen ── */
-    .welcome-screen {
-      min-height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding:
-        max(3rem, env(safe-area-inset-top))
-        1.5rem
-        max(8rem, calc(env(safe-area-inset-bottom) + 6rem));
-      text-align: center;
     }
 
     /* ── Reusable text utilities ── */
@@ -715,6 +650,16 @@ function burrow() {
 }
 
 if ('serviceWorker' in navigator) {
+  // When a new SW activates and posts SW_UPDATED, reload the page
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data && e.data.type === 'SW_UPDATED') {
+      window.location.reload();
+    }
+  });
+  // Also reload if the controller changes (new SW claimed this client)
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload();
+  });
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
 </script>

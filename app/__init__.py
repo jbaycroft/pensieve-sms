@@ -57,11 +57,16 @@ def create_app() -> Flask:
         user = _email_user_map.get(email, "John") if email else None
         return {"cf_user": user}
 
-    # ── security headers ──────────────────────────────────────────────────────
+    # ── security + cache headers ────────────────────────────────────────────
     @app.after_request
     def add_security_headers(response: Response) -> Response:
         for header, value in _SECURITY_HEADERS.items():
             response.headers.setdefault(header, value)
+        # Prevent Cloudflare edge and browser from caching HTML responses.
+        # Without this, stale pages with old CSP / old templates get served
+        # on refresh and the user sees errors.
+        if "text/html" in response.content_type:
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         return response
 
     # ── DB teardown ───────────────────────────────────────────────────────────
