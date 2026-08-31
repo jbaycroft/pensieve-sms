@@ -824,6 +824,41 @@ var Burrow = (function() {
   };
 })();
 
+// ── Diagnostic bar (temporary — remove after mobile is confirmed working) ──
+(function() {
+  var bar = document.createElement('div');
+  bar.id = 'debug-bar';
+  bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#111;color:#0f0;font:11px/1.4 monospace;padding:4px 8px;max-height:30vh;overflow-y:auto;opacity:0.92;';
+  document.body.appendChild(bar);
+
+  var checks = [];
+  checks.push('htmx: ' + (typeof htmx !== 'undefined' ? 'OK' : 'MISSING'));
+  checks.push('Burrow: ' + (typeof Burrow !== 'undefined' ? 'OK' : 'MISSING'));
+  checks.push('user: ' + (window._cfUser || 'null'));
+  checks.push('sw: ' + ('serviceWorker' in navigator ? 'yes' : 'no'));
+  bar.textContent = checks.join(' | ');
+
+  window._dbg = function(msg) {
+    var t = new Date().toLocaleTimeString();
+    bar.textContent = '[' + t + '] ' + msg + '\n' + bar.textContent;
+  };
+
+  // Wrap every Burrow method with error logging
+  var orig = {};
+  ['submitTask','fireAction','fireCoffee','completeTask','togglePanel','setPriority','panelSelect','closePanel'].forEach(function(name) {
+    orig[name] = Burrow[name];
+    Burrow[name] = function() {
+      window._dbg(name + '(' + Array.prototype.slice.call(arguments).join(',') + ')');
+      try {
+        return orig[name].apply(null, arguments);
+      } catch(e) {
+        window._dbg('ERROR in ' + name + ': ' + e.message);
+        Burrow.showToast('JS Error: ' + e.message);
+      }
+    };
+  });
+})();
+
 if ('serviceWorker' in navigator) {
   var _swRefreshing = false;
   navigator.serviceWorker.addEventListener('controllerchange', function() {
@@ -831,8 +866,18 @@ if ('serviceWorker' in navigator) {
     _swRefreshing = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register('/sw.js').catch(function() {});
+  navigator.serviceWorker.register('/sw.js').catch(function(e) {
+    if (window._dbg) window._dbg('SW reg failed: ' + e.message);
+  });
 }
+
+// Catch ALL unhandled errors and show them
+window.addEventListener('error', function(e) {
+  if (window._dbg) window._dbg('GLOBAL ERR: ' + e.message + ' @ ' + e.filename + ':' + e.lineno);
+});
+window.addEventListener('unhandledrejection', function(e) {
+  if (window._dbg) window._dbg('PROMISE ERR: ' + (e.reason ? e.reason.message || e.reason : 'unknown'));
+});
 </script>
 </body>
 </html>
