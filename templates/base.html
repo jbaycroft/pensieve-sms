@@ -731,24 +731,31 @@ var Burrow = (function() {
   }
 
   function submitTask() {
+    if (window._dbg) window._dbg('submitTask: start');
     var bodyEl   = document.getElementById('task-body');
     var domainEl = document.getElementById('task-domain');
     var btnEl    = document.getElementById('btn-submit');
+    if (window._dbg) window._dbg('submitTask: bodyEl=' + !!bodyEl + ' val="' + (bodyEl ? bodyEl.value : 'null') + '"');
     var body = (bodyEl ? bodyEl.value : '').trim();
-    if (!body) { showToast('Type something first'); return; }
-    if (!lock('submit')) return;
+    if (!body) { showToast('Type something first'); if (window._dbg) window._dbg('submitTask: EMPTY body, bailed'); return; }
+    if (!lock('submit')) { if (window._dbg) window._dbg('submitTask: LOCKED, bailed'); return; }
+    if (window._dbg) window._dbg('submitTask: locked OK, calling fetch');
     if (btnEl) { btnEl.textContent = 'Sending\u2026'; btnEl.disabled = true; }
 
     var prefix    = priority === 'urgent' ? '!! '
                   : priority === 'high'   ? '! ' : '';
     var domPrefix = domainEl && domainEl.value ? domainEl.value + ': ' : '';
 
+    var payload = { body: prefix + domPrefix + body, user: user };
+    if (window._dbg) window._dbg('submitTask: payload=' + JSON.stringify(payload));
+
     apiFetch('/api/task', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ body: prefix + domPrefix + body, user: user }),
+      body:    JSON.stringify(payload),
     })
     .then(function(data) {
+      if (window._dbg) window._dbg('submitTask: response=' + JSON.stringify(data));
       if (data.ticket_id) {
         showToast('\u2605 Added: ' + data.enhanced);
         if (bodyEl) bodyEl.value = '';
@@ -759,8 +766,12 @@ var Burrow = (function() {
         showToast('\u2717 ' + (data.error || 'something went wrong'));
       }
     })
-    .catch(function(e) { showToast('\u2717 ' + (e.message || 'Network error')); })
+    .catch(function(e) {
+      if (window._dbg) window._dbg('submitTask: CATCH err=' + e.message);
+      showToast('\u2717 ' + (e.message || 'Network error'));
+    })
     .finally(function() {
+      if (window._dbg) window._dbg('submitTask: finally, unlocking');
       unlock('submit');
       if (btnEl) { btnEl.textContent = 'Queue it'; btnEl.disabled = false; }
     });
