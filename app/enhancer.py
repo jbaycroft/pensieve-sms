@@ -52,15 +52,39 @@ GEMINI_MODEL_NAME: str = "gemini-2.0-flash-lite"
 
 # Ollama
 OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
-OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "qwen2.5:1.5b")
+OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "phi3")
 OLLAMA_TIMEOUT: int = int(os.getenv("OLLAMA_TIMEOUT", "15"))
 
 VALID_DOMAINS: frozenset[str] = frozenset(
     {"work", "hydroponics", "property", "physical", "hobby", "connection", "general"}
 )
 _MAX_ENHANCED_LEN: int = 120
-_MAX_RETRIES: int = 3
-_RETRY_BASE_S: float = 1.0
+_MAX_RETRIES: int = 2
+_RETRY_BASE_S: float = 0.3
+
+# Track backend failures within a process lifetime so we don't waste
+# 13 seconds of retry loops when both backends are known-dead.
+_backend_dead: dict[str, float] = {}  # name → timestamp when marked dead
+_DEAD_TTL_S: float = 120.0  # retry a dead backend after 2 minutes
+
+
+def _mark_dead(name: str) -> None:
+    """Mark a backend as dead so subsequent calls skip it instantly."""
+    _backend_dead[name] = time.monotonic()
+    log.info("Marked %s backend as dead for %.0fs", name, _DEAD_TTL_S)
+
+
+def _is_dead(name: str) -> bool:
+    """Return True if the backend was recently marked dead."""
+    ts = _backend_dead.get(name)
+    if ts is None:
+        return False
+    if time.monotonic() - ts > _DEAD_TTL_S:
+        del _backend_dead[name]
+        log.info("Backend %s dead-TTL expired, will retry", name)
+        return False
+    return True
+
 
 # ── Gemini backend ────────────────────────────────────────────────────────────
 
@@ -81,6 +105,8 @@ def _get_gemini_model():  # type: ignore[return]
 
 def _call_gemini(prompt: str, context: str) -> Optional[str]:
     """Call Gemini with exponential backoff. Returns response text or None."""
+    if _is_dead("gemini"):
+        return None
     for attempt in range(1, _MAX_RETRIES + 1):
         try:
             result = _get_gemini_model().generate_content(prompt)
@@ -98,6 +124,7 @@ def _call_gemini(prompt: str, context: str) -> Optional[str]:
                     "Gemini %s exhausted after %d attempts (%s)",
                     context, _MAX_RETRIES, type(exc).__name__,
                 )
+                _mark_dead("gemini")
     return None
 
 
@@ -120,6 +147,8 @@ def _call_ollama(prompt: str, context: str) -> Optional[str]:
     Uses /api/generate with stream=False for a single synchronous response.
     Returns the response text or None if all attempts fail.
     """
+    if _is_dead("ollama"):
+        return None
     url = f"{OLLAMA_BASE_URL}/api/generate"
     payload = json.dumps({
         "model": OLLAMA_MODEL,
@@ -158,6 +187,7 @@ def _call_ollama(prompt: str, context: str) -> Optional[str]:
                     "Ollama %s exhausted after %d attempts (%s)",
                     context, _MAX_RETRIES, type(exc).__name__,
                 )
+                _mark_dead("ollama")
     return None
 
 
