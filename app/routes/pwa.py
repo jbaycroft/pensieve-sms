@@ -9,6 +9,7 @@ from ..vault import write_ticket, write_index
 from ..ack import random_ack
 from ..preferences import get_prefs, save_prefs
 from ..quick_actions import get_actions
+from ..notify import notify
 
 log = logging.getLogger(__name__)
 pwa_bp = Blueprint("pwa", __name__)
@@ -26,10 +27,23 @@ def _queue_tickets(limit: int = 20) -> list[dict]:
     return get_queue(limit)
 
 
+def _cf_user() -> str:
+    """Return the display name of the current CF Access user."""
+    email = request.headers.get("Cf-Access-Authenticated-User-Email", "")
+    if "navmusic" in email:
+        return "John"
+    if "jdepatie" in email or "jbaycroft" in email:
+        return "Jeannie"
+    return email.split("@")[0] if email else "Someone"
+
+
 def _write(title: str, domain: str, priority: str, est_min: int = 30) -> tuple[str, str]:
     """Write ticket + queue entry, return (ticket_id, ack)."""
     tid = write_ticket(title, domain, priority, est_min)
     write_index(tid, priority)
+    who = _cf_user()
+    tag = "fire" if priority == "urgent" else "star" if priority == "high" else "scroll"
+    notify(f"New quest from {who}", title, tags=tag, priority="high" if priority == "urgent" else "default")
     return tid, random_ack()
 
 
@@ -108,6 +122,8 @@ def complete_task(ticket_id: str):
     try:
         from ..vault import close_ticket
         close_ticket(ticket_id, actor="pwa")
+        who = _cf_user()
+        notify(f"{who} completed a quest", ticket_id, tags="white_check_mark")
         return jsonify({"ok": True, "ticket_id": ticket_id})
     except Exception as e:
         log.error("complete_task: %s", e, exc_info=True)
