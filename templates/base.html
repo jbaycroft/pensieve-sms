@@ -16,526 +16,455 @@
   <script>window._cfUser = {{ cf_user | tojson }};</script>
   <script src="/static/htmx.min.js"></script>
   <style>
-    /* ── Layout utilities ── */
-    .flex { display: flex; }
-    .inline-flex { display: inline-flex; }
-    .grid { display: grid; }
-    .hidden { display: none; }
-    .flex-1 { flex: 1 1 0%; }
-    .flex-col { flex-direction: column; }
-    .flex-wrap { flex-wrap: wrap; }
-    .shrink-0 { flex-shrink: 0; }
-    .items-center { align-items: center; }
-    .items-start { align-items: flex-start; }
-    .justify-center { justify-content: center; }
-    .justify-between { justify-content: space-between; }
-    .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .gap-2 { gap: 0.5rem; }
-    .gap-3 { gap: 0.75rem; }
-    .gap-4 { gap: 1rem; }
-    .p-3 { padding: 0.75rem; }
-    .p-4 { padding: 1rem; }
-    .p-5 { padding: 1.25rem; }
-    .p-8 { padding: 2rem; }
-    .px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
-    .px-4 { padding-left: 1rem; padding-right: 1rem; }
-    .px-5 { padding-left: 1.25rem; padding-right: 1.25rem; }
-    .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-    .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
-    .pb-32 { padding-bottom: 8rem; }
-    .mb-2 { margin-bottom: 0.5rem; }
-    .mb-3 { margin-bottom: 0.75rem; }
-    .mb-4 { margin-bottom: 1rem; }
-    .mb-5 { margin-bottom: 1.25rem; }
-    .mt-1 { margin-top: 0.25rem; }
-    .mt-3 { margin-top: 0.75rem; }
-    .mt-5 { margin-top: 1.25rem; }
-    .ml-3 { margin-left: 0.75rem; }
-    .mx-auto { margin-left: auto; margin-right: auto; }
-    .max-w-lg { max-width: 32rem; }
-    .max-w-sm { max-width: 24rem; }
-    .min-w-0 { min-width: 0; }
-    .w-5 { width: 1.25rem; }
-    .w-6 { width: 1.5rem; }
-    .w-full { width: 100%; }
-    .h-3 { height: 0.75rem; }
-    .h-4 { height: 1rem; }
-    .h-5 { height: 1.25rem; }
-    .rounded { border-radius: 0.25rem; }
-    .space-y-2 > :not(:first-child) { margin-top: 0.5rem; }
-    .text-center { text-align: center; }
-    .text-lg { font-size: 1.125rem; line-height: 1.75rem; }
-    .text-xl { font-size: 1.25rem; line-height: 1.75rem; }
-    .text-2xl { font-size: 1.5rem; line-height: 2rem; }
-    .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
-    .text-5xl { font-size: 3rem; line-height: 1; }
-    .leading-none { line-height: 1; }
-    .leading-snug { line-height: 1.375; }
-    .capitalize { text-transform: capitalize; }
-    .cursor-pointer { cursor: pointer; }
-    .fixed { position: fixed; }
-    .relative { position: relative; }
-    .absolute { position: absolute; }
-    .inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
-    .left-4 { left: 1rem; }
-    .right-4 { right: 1rem; }
-    .z-50 { z-index: 50; }
-    .overflow-hidden { overflow: hidden; }
-    .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .pointer-events-none { pointer-events: none; }
-    .select-none { user-select: none; }
+    /* ── Reset ── */
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; margin: 0; padding: 0; }
 
-    [x-cloak] { display: none !important; }
-    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-
-    /* ── Design tokens ── */
+    /* ── Tokens ── */
     :root {
-      --sky-deep:    #0a1520;
-      --sky-mid:     #0f2030;
+      --bg:          #0a1520;
       --wood-dark:   #1e1208;
       --wood-mid:    #2d1c0a;
       --wood-light:  #3d2810;
-      --border-dark: #5c3d11;
+      --border:      #5c3d11;
       --border-mid:  #8b6020;
       --border-gold: #c49a2f;
       --parchment:   #f0ddb0;
       --parchment-dk:#cca870;
       --text-muted:  #c4a070;
       --text-dim:    #9a7a50;
-      --green-bright:#7ec850;
+      --green:       #7ec850;
       --green-mid:   #4a8a28;
       --green-dark:  #2d5516;
       --amber:       #e8b030;
-      --amber-dark:  #b07820;
-      --red-warm:    #c43828;
-      --anim-speed:  1;
+      --red:         #c43828;
     }
 
     body {
       font-family: 'Inter', sans-serif;
-      background: var(--sky-deep);
+      background: var(--bg);
       color: var(--parchment);
       min-height: 100dvh;
       overflow-x: hidden;
-      position: relative;
     }
 
-    /* ── Night sky ── */
-    .night-sky {
+    /* ── Sky + stars ── */
+    .sky {
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background:
         radial-gradient(ellipse at 20% 10%, rgba(30,60,20,0.25) 0%, transparent 50%),
         radial-gradient(ellipse at 80% 80%, rgba(20,30,60,0.2) 0%, transparent 50%),
         linear-gradient(180deg, #0a1520 0%, #0d1b0a 40%, #0a1208 100%);
     }
-
-    /* ── Stars ── */
     .stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
     .star {
       position: absolute; background: #fff; border-radius: 50%;
       animation: twinkle var(--dur, 3s) ease-in-out infinite var(--delay, 0s);
     }
     @keyframes twinkle {
-      0%,100% { opacity: var(--min-op, 0.2); transform: scale(1); }
-      50%      { opacity: var(--max-op, 0.9); transform: scale(1.3); }
+      0%,100% { opacity: var(--lo, 0.15); transform: scale(1); }
+      50%     { opacity: var(--hi, 0.8);  transform: scale(1.2); }
     }
 
-    /* ── Landscape layer (trees + barn) ── */
-    .landscape-layer {
+    /* ── Landscape ── */
+    .landscape {
       position: fixed; bottom: 0; left: 0; right: 0;
       z-index: 0; pointer-events: none;
     }
 
-    .content-layer { position: relative; z-index: 1; }
+    /* ── App shell ── */
+    .app {
+      position: relative; z-index: 1;
+      max-width: 28rem;
+      margin: 0 auto;
+      padding: max(1rem, env(safe-area-inset-top)) 1rem 8rem;
+    }
 
-    /* ── Pixel panel ── */
-    .pixel-panel {
+    /* ── Header ── */
+    .header {
+      text-align: center;
+      padding: 0.5rem 0 1.25rem;
+    }
+    .header h1 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.8rem;
+      color: var(--amber);
+      text-shadow: 2px 2px 0 rgba(0,0,0,0.6);
+      margin-bottom: 0.25rem;
+      letter-spacing: 0.05em;
+    }
+    .header .greeting {
+      font-family: 'VT323', monospace;
+      font-size: 1.4rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Command bar (the main input) ── */
+    .command-bar {
       background: var(--wood-mid);
-      border: 3px solid var(--border-dark);
+      border: 3px solid var(--border);
       box-shadow:
         inset 2px 2px 0 var(--border-gold),
         inset -2px -2px 0 #3a2008,
         3px 3px 0 rgba(0,0,0,0.5),
         0 6px 20px rgba(0,0,0,0.4);
-      border-radius: 4px;
+      border-radius: 6px;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
       position: relative;
     }
-    .pixel-panel::before {
+    .command-bar::before {
       content: ''; position: absolute; inset: 2px;
-      border: 1px solid rgba(196,154,47,0.15);
-      border-radius: 2px; pointer-events: none;
+      border: 1px solid rgba(196,154,47,0.12);
+      border-radius: 4px; pointer-events: none;
     }
-
-    /* ── Fonts ── */
-    .pixel-font { font-family: 'Press Start 2P', monospace; }
-    .vt-font    { font-family: 'VT323', monospace; }
-
-    /* ── Action grid buttons ── */
-    .action-btn {
+    .command-input {
+      flex: 1;
       background: var(--wood-dark);
-      border: 2px solid var(--border-dark);
-      box-shadow:
-        inset 1px 1px 0 rgba(196,154,47,0.4),
-        inset -1px -1px 0 #1a0c04,
-        2px 3px 0 rgba(0,0,0,0.5);
+      border: 2px solid transparent;
       border-radius: 4px;
-      transition: all 0.1s;
-      cursor: pointer;
-      position: relative;
-      min-height: 72px;
-    }
-    .action-btn:hover {
-      background: var(--wood-light);
-      border-color: var(--border-mid);
-      box-shadow:
-        inset 1px 1px 0 rgba(196,154,47,0.6),
-        inset -1px -1px 0 #2a1406,
-        2px 3px 0 rgba(0,0,0,0.4);
-      transform: translateY(-2px);
-    }
-    .action-btn:active {
-      transform: translateY(1px);
-      box-shadow:
-        inset 1px 1px 0 #1a0c04,
-        inset -1px -1px 0 rgba(196,154,47,0.3),
-        1px 1px 0 rgba(0,0,0,0.4);
-    }
-    .action-btn.active {
-      background: var(--green-dark);
-      border-color: var(--green-mid);
-      box-shadow:
-        inset 1px 1px 0 rgba(126,200,80,0.4),
-        inset -1px -1px 0 #1a3a0a,
-        2px 3px 0 rgba(0,0,0,0.5),
-        0 0 14px rgba(74,138,40,0.35);
-    }
-
-    /* ── Form inputs ── */
-    .burrow-input {
-      background: var(--wood-dark);
-      border: 2px solid var(--border-dark);
-      box-shadow: inset 2px 2px 4px rgba(0,0,0,0.4), inset 1px 1px 0 #1a0c04;
       color: var(--parchment);
-      border-radius: 3px;
-      padding: 13px 14px;
-      width: 100%;
-      outline: none;
       font-family: 'Inter', sans-serif;
-      font-size: 1rem;
-      transition: border-color 0.15s, box-shadow 0.15s;
+      font-size: 0.95rem;
+      padding: 12px 14px;
+      outline: none;
       min-height: 48px;
+      transition: border-color 0.15s;
     }
-    .burrow-input::placeholder { color: var(--text-dim); }
-    .burrow-input:focus {
-      border-color: var(--green-mid);
-      box-shadow: inset 2px 2px 4px rgba(0,0,0,0.4), 0 0 0 2px rgba(74,138,40,0.25);
-    }
-
-    /* ── Primary button ── */
-    .btn-primary {
+    .command-input::placeholder { color: var(--text-dim); }
+    .command-input:focus { border-color: rgba(74,138,40,0.4); }
+    .command-submit {
       background: var(--green-dark);
       border: 2px solid var(--green-mid);
       box-shadow:
         inset 1px 1px 0 rgba(126,200,80,0.35),
-        inset -1px -1px 0 #1a3a0a,
-        2px 3px 0 rgba(0,0,0,0.5);
+        inset -1px -1px 0 #1a3a0a;
       color: var(--parchment);
       font-family: 'Inter', sans-serif;
-      font-size: 0.875rem;
+      font-size: 0.8rem;
       font-weight: 700;
-      letter-spacing: 0.02em;
-      border-radius: 3px;
-      padding: 0 22px;
+      letter-spacing: 0.03em;
+      border-radius: 4px;
+      padding: 0 18px;
       min-height: 48px;
       cursor: pointer;
-      transition: all 0.15s;
       white-space: nowrap;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
+      transition: all 0.12s;
+      flex-shrink: 0;
     }
-    .btn-primary:hover {
-      background: var(--green-mid);
-      border-color: var(--green-bright);
-      transform: translateY(-1px);
-    }
-    .btn-primary:active {
-      transform: translateY(1px);
-      box-shadow: inset 2px 2px 0 rgba(0,0,0,0.3), 1px 1px 0 rgba(0,0,0,0.4);
-    }
-    .btn-primary.w-full { width: 100%; }
-    .btn-primary:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none;
-    }
-    .btn-primary.is-loading {
-      pointer-events: none;
-      animation: btn-pulse 1s ease-in-out infinite;
+    .command-submit:hover { background: var(--green-mid); }
+    .command-submit:active { transform: scale(0.97); }
+    .command-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    .command-submit.is-loading {
+      animation: btn-pulse 0.8s ease-in-out infinite;
     }
     @keyframes btn-pulse {
-      0%, 100% { border-color: var(--green-mid); }
-      50%      { border-color: var(--green-bright); box-shadow: 0 0 12px rgba(126,200,80,0.3); }
+      0%,100% { border-color: var(--green-mid); }
+      50%     { border-color: var(--green); box-shadow: 0 0 10px rgba(126,200,80,0.3); }
     }
 
-    /* ── Priority pills ── */
-    .priority-pill {
-      border: 2px solid var(--border-dark);
+    /* ── Quick action row ── */
+    .actions {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      padding: 1rem 0 0.25rem;
+    }
+    .action-icon {
+      width: 46px;
+      height: 46px;
       background: var(--wood-dark);
-      box-shadow: inset 1px 1px 0 rgba(196,154,47,0.2), 1px 2px 0 rgba(0,0,0,0.4);
-      color: var(--text-muted);
-      font-family: 'Inter', sans-serif;
-      font-size: 0.8rem;
-      font-weight: 600;
-      border-radius: 3px;
-      padding: 0 6px;
-      min-height: 44px;
-      cursor: pointer;
-      transition: all 0.1s;
-      text-align: center;
-      display: inline-flex;
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      display: flex;
       align-items: center;
       justify-content: center;
-      gap: 5px;
-    }
-    .priority-pill:hover { background: var(--wood-light); color: var(--parchment-dk); }
-    .priority-pill.p-normal { background: var(--wood-light); border-color: var(--border-mid); color: var(--parchment-dk); }
-    .priority-pill.p-high   { background: #3d2800; border-color: #a07020; color: var(--amber); }
-    .priority-pill.p-urgent { background: #3d0f0a; border-color: #8b2818; color: #e87060; }
-
-    /* ── Domain pills ── */
-    .domain-pill {
-      border: 2px solid var(--border-dark);
-      background: var(--wood-dark);
-      box-shadow: inset 1px 1px 0 rgba(196,154,47,0.15), 1px 1px 0 rgba(0,0,0,0.3);
-      color: var(--text-dim);
-      font-family: 'Inter', sans-serif;
-      font-size: 0.72rem;
-      font-weight: 600;
-      border-radius: 3px;
-      padding: 6px 10px;
-      min-height: 36px;
+      font-size: 1.25rem;
       cursor: pointer;
-      transition: all 0.1s;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      white-space: nowrap;
+      transition: all 0.12s;
+      box-shadow: 1px 2px 0 rgba(0,0,0,0.4);
+      flex-shrink: 0;
     }
-    .domain-pill:hover { background: var(--wood-light); color: var(--parchment-dk); }
-    .domain-pill.active {
+    .action-icon:hover {
       background: var(--wood-light);
       border-color: var(--border-mid);
-      color: var(--parchment-dk);
+      transform: translateY(-2px);
+    }
+    .action-icon:active { transform: translateY(1px); }
+    .action-icon.active {
+      background: var(--green-dark);
+      border-color: var(--green-mid);
+      box-shadow: 0 0 12px rgba(74,138,40,0.35), 1px 2px 0 rgba(0,0,0,0.4);
+    }
+    .action-label {
+      display: none; /* labels only visible on wider screens */
+    }
+    @media (min-width: 400px) {
+      .action-icon { width: 50px; height: 50px; font-size: 1.35rem; }
+      .actions { gap: 8px; }
     }
 
-    /* ── Priority toggle ── */
-    .priority-toggle {
-      background: none;
-      border: 1px solid var(--border-dark);
-      border-radius: 3px;
-      color: var(--text-dim);
-      font-family: 'Inter', sans-serif;
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      padding: 5px 12px;
-      cursor: pointer;
-      transition: all 0.15s;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .priority-toggle:hover { border-color: var(--border-mid); color: var(--text-muted); }
-    .priority-toggle .arrow {
-      transition: transform 0.2s;
-      font-size: 0.6rem;
-    }
-    .priority-toggle.is-open .arrow { transform: rotate(180deg); }
-    .priority-toggle.has-priority { color: var(--amber); border-color: var(--amber-dark); }
-
-    /* ── Collapsible priority row ── */
-    .priority-row {
+    /* ── Expandable panel ── */
+    .panel-slot {
       overflow: hidden;
       max-height: 0;
       opacity: 0;
-      transition: max-height 0.25s ease-out, opacity 0.2s ease-out, margin 0.25s ease-out;
-      margin-top: 0;
+      transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
     }
-    .priority-row.is-open {
-      max-height: 60px;
+    .panel-slot.is-open {
+      max-height: 500px;
       opacity: 1;
-      margin-top: 0.5rem;
     }
-
-    /* ── Quest log items ── */
-    .quest-item {
-      background: var(--wood-dark);
-      border: 2px solid var(--border-dark);
-      border-left-width: 4px;
-      box-shadow: inset 1px 1px 0 rgba(196,154,47,0.12), 1px 2px 0 rgba(0,0,0,0.35);
-      border-radius: 3px;
-      transition: background 0.15s, opacity 0.3s, transform 0.3s;
-      animation: quest-in 0.25s ease-out both;
-    }
-    .quest-item:hover { background: #251408; }
-    .quest-item.p-head   { border-left-color: var(--green-mid); }
-    .quest-item.p-urgent { border-left-color: var(--red-warm); }
-    .quest-item.p-high   { border-left-color: var(--amber); }
-    .quest-item.p-normal { border-left-color: var(--border-dark); }
-    .quest-item.is-done {
-      opacity: 0;
-      transform: translateX(20px);
-      transition: opacity 0.3s ease-out, transform 0.3s ease-out;
-    }
-
-    /* Stagger animation for quest items */
-    @keyframes quest-in {
-      from { opacity: 0; transform: translateY(6px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    .quest-item:nth-child(1) { animation-delay: 0ms; }
-    .quest-item:nth-child(2) { animation-delay: 40ms; }
-    .quest-item:nth-child(3) { animation-delay: 80ms; }
-    .quest-item:nth-child(4) { animation-delay: 120ms; }
-    .quest-item:nth-child(5) { animation-delay: 160ms; }
-    .quest-item:nth-child(6) { animation-delay: 200ms; }
-    .quest-item:nth-child(7) { animation-delay: 240ms; }
-    .quest-item:nth-child(8) { animation-delay: 280ms; }
-    .quest-item:nth-child(n+9) { animation-delay: 300ms; }
-
-    /* ── Section labels ── */
-    .section-label {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.65rem;
-      font-weight: 700;
-      color: var(--text-muted);
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-    }
-
-    /* ── Toast notification ── */
-    .toast-box {
+    .panel {
       background: var(--wood-mid);
-      border: 3px solid var(--border-dark);
+      border: 3px solid var(--border);
       box-shadow:
-        inset 2px 2px 0 rgba(196,154,47,0.4),
-        inset -2px -2px 0 #2a1406,
-        3px 4px 0 rgba(0,0,0,0.6);
-      border-radius: 4px;
-      transform: translateY(1rem);
-      opacity: 0;
-      transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+        inset 2px 2px 0 var(--border-gold),
+        inset -2px -2px 0 #3a2008,
+        3px 3px 0 rgba(0,0,0,0.5);
+      border-radius: 6px;
+      padding: 1.25rem;
+      margin-top: 0.75rem;
+      position: relative;
     }
-    .toast-box.is-visible {
-      opacity: 1;
-      transform: translateY(0);
+    .panel::before {
+      content: ''; position: absolute; inset: 2px;
+      border: 1px solid rgba(196,154,47,0.12);
+      border-radius: 4px; pointer-events: none;
     }
 
-    /* ── Ghost / minor buttons ── */
-    .btn-ghost {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.75rem;
+    /* ── Panel form elements ── */
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .panel-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--amber);
+    }
+    .panel-close {
+      font-size: 0.72rem;
       font-weight: 600;
       color: var(--text-dim);
-      background: transparent;
+      background: none;
       border: 1px solid transparent;
       border-radius: 3px;
       padding: 4px 10px;
-      min-height: 32px;
       cursor: pointer;
       transition: all 0.15s;
-      display: inline-flex;
-      align-items: center;
     }
-    .btn-ghost:hover {
+    .panel-close:hover { color: var(--text-muted); border-color: var(--border); }
+    .panel-label {
+      font-size: 0.62rem;
+      font-weight: 700;
       color: var(--text-muted);
-      border-color: var(--border-dark);
-      background: rgba(255,255,255,0.03);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 0.4rem;
+    }
+    .panel-input {
+      background: var(--wood-dark);
+      border: 2px solid var(--border);
+      box-shadow: inset 2px 2px 4px rgba(0,0,0,0.4);
+      color: var(--parchment);
+      border-radius: 3px;
+      padding: 12px 14px;
+      width: 100%;
+      outline: none;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      min-height: 48px;
+      transition: border-color 0.15s;
+    }
+    .panel-input::placeholder { color: var(--text-dim); }
+    .panel-input:focus { border-color: var(--green-mid); }
+
+    /* ── Selector grid (coffee size, drink) ── */
+    .sel-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.4rem;
+    }
+    .sel-btn {
+      background: var(--wood-dark);
+      border: 2px solid var(--border);
+      box-shadow: inset 1px 1px 0 rgba(196,154,47,0.3), 1px 2px 0 rgba(0,0,0,0.4);
+      color: var(--parchment-dk);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: capitalize;
+      border-radius: 4px;
+      padding: 10px 4px;
+      cursor: pointer;
+      transition: all 0.1s;
+      text-align: center;
+    }
+    .sel-btn:hover { background: var(--wood-light); }
+    .sel-btn:active { transform: translateY(1px); }
+    .sel-btn.active {
+      background: var(--green-dark);
+      border-color: var(--green-mid);
+      box-shadow: 0 0 10px rgba(74,138,40,0.3);
+    }
+    .sel-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+    .sel-wrap .sel-btn {
+      padding: 8px 12px;
+      font-size: 0.75rem;
     }
 
-    /* ── Skeleton shimmer ── */
-    .skeleton {
-      background: linear-gradient(90deg,
-        var(--wood-dark) 25%, #261810 50%, var(--wood-dark) 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-      border-radius: 2px;
+    /* ── Panel submit ── */
+    .panel-submit {
+      background: var(--green-dark);
+      border: 2px solid var(--green-mid);
+      box-shadow: inset 1px 1px 0 rgba(126,200,80,0.3);
+      color: var(--parchment);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border-radius: 4px;
+      padding: 0 20px;
+      min-height: 48px;
+      width: 100%;
+      cursor: pointer;
+      transition: all 0.12s;
     }
-    @keyframes shimmer {
-      0%   { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
-
-    /* ── Safe area helpers ── */
-    .pb-safe { padding-bottom: max(2rem, env(safe-area-inset-bottom)); }
-
-    /* ── Scrollbar ── */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: var(--wood-dark); }
-    ::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 0; }
+    .panel-submit:hover { background: var(--green-mid); }
+    .panel-submit:active { transform: scale(0.98); }
+    .panel-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    .panel-submit.is-loading { animation: btn-pulse 0.8s ease-in-out infinite; }
 
     /* ── Checkbox ── */
     input[type="checkbox"] {
       accent-color: var(--green-mid);
-      width: 18px; height: 18px; cursor: pointer;
+      width: 16px; height: 16px; cursor: pointer;
     }
 
-    /* ── Reusable text utilities ── */
-    .text-body {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: var(--parchment);
-      line-height: 1.4;
+    /* ── Divider ── */
+    .divider {
+      border: none;
+      border-top: 1px solid rgba(92,61,17,0.5);
+      margin: 1.25rem 0 1rem;
     }
-    .text-caption {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.68rem;
+
+    /* ── Quest log ── */
+    .log-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.6rem;
+    }
+    .log-title {
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+    .log-refresh {
+      font-size: 0.72rem;
       font-weight: 600;
       color: var(--text-dim);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 8px;
+      transition: color 0.15s;
     }
-    .text-panel-title {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: var(--amber);
+    .log-refresh:hover { color: var(--text-muted); }
+
+    /* ── Quest item ── */
+    .quest {
+      background: var(--wood-dark);
+      border: 2px solid var(--border);
+      border-left-width: 4px;
+      border-radius: 4px;
+      padding: 12px 14px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: inset 1px 1px 0 rgba(196,154,47,0.1), 1px 2px 0 rgba(0,0,0,0.3);
+      transition: background 0.15s, opacity 0.3s, transform 0.3s;
+      animation: quest-in 0.2s ease-out both;
     }
-    .text-action-label {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.7rem;
-      font-weight: 600;
-      color: var(--parchment-dk);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 100%;
+    .quest:hover { background: #251408; }
+    .quest.q-head   { border-left-color: var(--green-mid); }
+    .quest.q-urgent { border-left-color: var(--red); }
+    .quest.q-high   { border-left-color: var(--amber); }
+    .quest.q-normal { border-left-color: var(--border); }
+    .quest.is-done {
+      opacity: 0; transform: translateX(20px);
     }
-    .text-panel-btn {
-      font-family: 'Inter', sans-serif;
+    @keyframes quest-in {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .quest:nth-child(1) { animation-delay: 0ms; }
+    .quest:nth-child(2) { animation-delay: 30ms; }
+    .quest:nth-child(3) { animation-delay: 60ms; }
+    .quest:nth-child(4) { animation-delay: 90ms; }
+    .quest:nth-child(5) { animation-delay: 120ms; }
+    .quest:nth-child(n+6){ animation-delay: 150ms; }
+
+    .quest-rank {
+      font-family: 'VT323', monospace;
+      font-size: 1.3rem;
+      width: 22px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .quest-body { flex: 1; min-width: 0; }
+    .quest-title {
       font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--parchment-dk);
+      font-weight: 500;
+      line-height: 1.35;
+      color: var(--parchment);
+      margin-bottom: 2px;
     }
-    .badge {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.68rem;
+    .quest-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .quest-badge {
+      font-size: 0.65rem;
       font-weight: 600;
       color: var(--text-dim);
       background: rgba(196,154,47,0.08);
-      border: 1px solid rgba(196,154,47,0.18);
-      padding: 1px 7px;
+      border: 1px solid rgba(196,154,47,0.15);
+      padding: 1px 6px;
       border-radius: 2px;
     }
-
-    /* ── Done button (quest items) — enlarged for mobile ── */
-    .btn-done {
-      width: 36px;
-      height: 36px;
+    .quest-time {
+      font-family: 'VT323', monospace;
+      font-size: 1rem;
+      color: var(--text-dim);
+    }
+    .quest-head-tag {
+      font-size: 0.6rem;
+      font-weight: 700;
+      background: rgba(126,200,80,0.1);
+      border: 1px solid rgba(126,200,80,0.3);
+      color: var(--green);
+      padding: 1px 7px;
+      border-radius: 2px;
+      white-space: nowrap;
+    }
+    .quest-done {
+      width: 34px;
+      height: 34px;
+      border: 2px solid var(--border);
       border-radius: 4px;
-      border: 2px solid var(--border-dark);
       background: transparent;
       cursor: pointer;
       transition: all 0.15s;
@@ -545,373 +474,317 @@
       flex-shrink: 0;
       padding: 0;
     }
-    .btn-done:hover {
+    .quest-done svg { transition: stroke 0.15s; }
+    .quest-done:hover {
       border-color: var(--green-mid);
-      background: rgba(126,200,80,0.1);
-      box-shadow: 0 0 8px rgba(126,200,80,0.2);
+      background: rgba(126,200,80,0.08);
     }
-    .btn-done:active {
+    .quest-done:hover svg { stroke: var(--green); }
+    .quest-done:active {
       background: var(--green-dark);
-      border-color: var(--green-bright);
+      border-color: var(--green);
       transform: scale(0.9);
     }
 
-    /* ── Action panel slide ── */
-    .panel-wrap {
-      overflow: hidden;
-      max-height: 0;
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center;
+      padding: 2.5rem 1rem;
+    }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 0.75rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+    .empty-text { font-size: 0.85rem; color: var(--text-dim); }
+    .empty-sub { font-family: 'VT323', monospace; font-size: 1.2rem; color: var(--text-dim); margin-top: 0.25rem; }
+
+    /* ── Skeleton ── */
+    .skel {
+      background: linear-gradient(90deg, var(--wood-dark) 25%, #261810 50%, var(--wood-dark) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 2px;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      left: 1rem; right: 1rem;
+      bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem));
+      max-width: 22rem;
+      margin: 0 auto;
+      z-index: 9999;
+      background: var(--wood-mid);
+      border: 3px solid var(--border);
+      box-shadow:
+        inset 2px 2px 0 rgba(196,154,47,0.35),
+        inset -2px -2px 0 #2a1406,
+        3px 4px 0 rgba(0,0,0,0.6);
+      border-radius: 6px;
+      padding: 14px 18px;
+      display: none;
+      transform: translateY(1rem);
       opacity: 0;
-      transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
+      transition: opacity 0.25s, transform 0.25s;
     }
-    .panel-wrap.is-open {
-      max-height: 600px;
-      opacity: 1;
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast-inner {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
     }
+    .toast-icon {
+      font-size: 1rem;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .toast-msg {
+      font-family: 'VT323', monospace;
+      font-size: 1.2rem;
+      line-height: 1.35;
+      color: var(--parchment);
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 0; }
 
     /* ── Reduced motion ── */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
       }
-      :root { --anim-speed: 0; }
     }
   </style>
 </head>
 <body>
 
-<!-- Night sky gradient -->
-<div class="night-sky"></div>
+<div class="sky"></div>
 <div class="stars" id="stars"></div>
 
-<!-- ── Pixel landscape: trees + barn silhouette ── -->
-<div class="landscape-layer">
+<!-- Landscape -->
+<div class="landscape">
   <svg viewBox="0 0 1200 128" xmlns="http://www.w3.org/2000/svg"
        preserveAspectRatio="xMidYMax slice" width="100%" height="128"
        style="shape-rendering:crispEdges; display:block">
     <rect x="0" y="112" width="1200" height="16" fill="#060e04"/>
-    <!-- Tree 1: small, x≈70 -->
     <g fill="#112409">
-      <rect x="62"  y="72"  width="16" height="8"/><rect x="54"  y="80"  width="32" height="8"/>
-      <rect x="46"  y="88"  width="48" height="8"/><rect x="54"  y="96"  width="32" height="8"/>
-      <rect x="46"  y="104" width="48" height="8"/><rect x="62"  y="104" width="16" height="8"/>
+      <rect x="62" y="72" width="16" height="8"/><rect x="54" y="80" width="32" height="8"/>
+      <rect x="46" y="88" width="48" height="8"/><rect x="54" y="96" width="32" height="8"/>
+      <rect x="46" y="104" width="48" height="8"/>
     </g>
-    <!-- Tree 2: tall, x≈200 -->
     <g fill="#0d1f08">
-      <rect x="192" y="24"  width="16" height="8"/><rect x="184" y="32"  width="32" height="8"/>
-      <rect x="176" y="40"  width="48" height="8"/><rect x="184" y="48"  width="32" height="8"/>
-      <rect x="176" y="56"  width="48" height="8"/><rect x="184" y="64"  width="32" height="8"/>
-      <rect x="176" y="72"  width="48" height="8"/><rect x="184" y="80"  width="32" height="8"/>
-      <rect x="176" y="88"  width="48" height="8"/><rect x="184" y="96"  width="32" height="8"/>
-      <rect x="176" y="104" width="48" height="8"/><rect x="192" y="104" width="16" height="8"/>
+      <rect x="192" y="24" width="16" height="8"/><rect x="184" y="32" width="32" height="8"/>
+      <rect x="176" y="40" width="48" height="8"/><rect x="184" y="48" width="32" height="8"/>
+      <rect x="176" y="56" width="48" height="8"/><rect x="184" y="64" width="32" height="8"/>
+      <rect x="176" y="72" width="48" height="8"/><rect x="184" y="80" width="32" height="8"/>
+      <rect x="176" y="88" width="48" height="8"/><rect x="184" y="96" width="32" height="8"/>
+      <rect x="176" y="104" width="48" height="8"/>
     </g>
-    <!-- Tree 3: medium, x≈340 -->
     <g fill="#112409">
-      <rect x="332" y="48"  width="16" height="8"/><rect x="324" y="56"  width="32" height="8"/>
-      <rect x="316" y="64"  width="48" height="8"/><rect x="324" y="72"  width="32" height="8"/>
-      <rect x="316" y="80"  width="48" height="8"/><rect x="324" y="88"  width="32" height="8"/>
-      <rect x="316" y="96"  width="48" height="8"/><rect x="332" y="104" width="16" height="8"/>
+      <rect x="332" y="48" width="16" height="8"/><rect x="324" y="56" width="32" height="8"/>
+      <rect x="316" y="64" width="48" height="8"/><rect x="324" y="72" width="32" height="8"/>
+      <rect x="316" y="80" width="48" height="8"/><rect x="324" y="88" width="32" height="8"/>
+      <rect x="316" y="96" width="48" height="8"/>
     </g>
-    <!-- Barn, x≈480 -->
     <g>
-      <rect x="440" y="52"  width="80" height="8"  fill="#1c0e08"/>
-      <rect x="448" y="44"  width="64" height="8"  fill="#180c07"/>
-      <rect x="456" y="36"  width="48" height="8"  fill="#140a06"/>
-      <rect x="464" y="28"  width="32" height="8"  fill="#100806"/>
-      <rect x="472" y="20"  width="16" height="8"  fill="#0e0605"/>
-      <rect x="500" y="10"  width="10" height="20" fill="#1a0e08"/>
-      <rect x="448" y="60"  width="64" height="52" fill="#180c08"/>
-      <rect x="456" y="68"  width="14" height="12" fill="#0a0604"/>
-      <rect x="490" y="68"  width="14" height="12" fill="#0a0604"/>
-      <rect x="472" y="84"  width="16" height="28" fill="#080604"/>
+      <rect x="440" y="52" width="80" height="8" fill="#1c0e08"/>
+      <rect x="448" y="44" width="64" height="8" fill="#180c07"/>
+      <rect x="456" y="36" width="48" height="8" fill="#140a06"/>
+      <rect x="464" y="28" width="32" height="8" fill="#100806"/>
+      <rect x="472" y="20" width="16" height="8" fill="#0e0605"/>
+      <rect x="500" y="10" width="10" height="20" fill="#1a0e08"/>
+      <rect x="448" y="60" width="64" height="52" fill="#180c08"/>
+      <rect x="456" y="68" width="14" height="12" fill="#0a0604"/>
+      <rect x="490" y="68" width="14" height="12" fill="#0a0604"/>
+      <rect x="472" y="84" width="16" height="28" fill="#080604"/>
     </g>
-    <!-- Tree 4: small, x≈640 -->
     <g fill="#112409">
-      <rect x="632" y="72"  width="16" height="8"/><rect x="624" y="80"  width="32" height="8"/>
-      <rect x="616" y="88"  width="48" height="8"/><rect x="624" y="96"  width="32" height="8"/>
-      <rect x="616" y="104" width="48" height="8"/><rect x="632" y="104" width="16" height="8"/>
+      <rect x="632" y="72" width="16" height="8"/><rect x="624" y="80" width="32" height="8"/>
+      <rect x="616" y="88" width="48" height="8"/><rect x="624" y="96" width="32" height="8"/>
+      <rect x="616" y="104" width="48" height="8"/>
     </g>
-    <!-- Tree 5: tall, x≈760 -->
     <g fill="#0d1f08">
-      <rect x="752" y="32"  width="16" height="8"/><rect x="744" y="40"  width="32" height="8"/>
-      <rect x="736" y="48"  width="48" height="8"/><rect x="744" y="56"  width="32" height="8"/>
-      <rect x="736" y="64"  width="48" height="8"/><rect x="744" y="72"  width="32" height="8"/>
-      <rect x="736" y="80"  width="48" height="8"/><rect x="744" y="88"  width="32" height="8"/>
-      <rect x="736" y="96"  width="48" height="8"/><rect x="752" y="104" width="16" height="8"/>
+      <rect x="752" y="32" width="16" height="8"/><rect x="744" y="40" width="32" height="8"/>
+      <rect x="736" y="48" width="48" height="8"/><rect x="744" y="56" width="32" height="8"/>
+      <rect x="736" y="64" width="48" height="8"/><rect x="744" y="72" width="32" height="8"/>
+      <rect x="736" y="80" width="48" height="8"/><rect x="744" y="88" width="32" height="8"/>
+      <rect x="736" y="96" width="48" height="8"/>
     </g>
-    <!-- Tree 6: medium, x≈900 -->
     <g fill="#112409">
-      <rect x="892" y="48"  width="16" height="8"/><rect x="884" y="56"  width="32" height="8"/>
-      <rect x="876" y="64"  width="48" height="8"/><rect x="884" y="72"  width="32" height="8"/>
-      <rect x="876" y="80"  width="48" height="8"/><rect x="884" y="88"  width="32" height="8"/>
-      <rect x="876" y="96"  width="48" height="8"/><rect x="892" y="104" width="16" height="8"/>
+      <rect x="892" y="48" width="16" height="8"/><rect x="884" y="56" width="32" height="8"/>
+      <rect x="876" y="64" width="48" height="8"/><rect x="884" y="72" width="32" height="8"/>
+      <rect x="876" y="80" width="48" height="8"/><rect x="884" y="88" width="32" height="8"/>
+      <rect x="876" y="96" width="48" height="8"/>
     </g>
-    <!-- Tree 7: small, x≈1050 -->
     <g fill="#0d1f08">
-      <rect x="1042" y="64"  width="16" height="8"/><rect x="1034" y="72"  width="32" height="8"/>
-      <rect x="1026" y="80"  width="48" height="8"/><rect x="1034" y="88"  width="32" height="8"/>
-      <rect x="1026" y="96"  width="48" height="8"/><rect x="1042" y="104" width="16" height="8"/>
+      <rect x="1042" y="64" width="16" height="8"/><rect x="1034" y="72" width="32" height="8"/>
+      <rect x="1026" y="80" width="48" height="8"/><rect x="1034" y="88" width="32" height="8"/>
+      <rect x="1026" y="96" width="48" height="8"/>
     </g>
-    <!-- Tree 8: small, x≈1160 -->
     <g fill="#112409">
-      <rect x="1152" y="80"  width="16" height="8"/><rect x="1144" y="88"  width="32" height="8"/>
-      <rect x="1136" y="96"  width="48" height="8"/><rect x="1144" y="104" width="32" height="8"/>
-      <rect x="1136" y="104" width="48" height="8"/>
+      <rect x="1152" y="80" width="16" height="8"/><rect x="1144" y="88" width="32" height="8"/>
+      <rect x="1136" y="96" width="48" height="8"/>
     </g>
   </svg>
 </div>
 
-<div class="content-layer">
-  {% block content %}{% endblock %}
-</div>
+{% block content %}{% endblock %}
 
-<!-- Toast is OUTSIDE content-layer so its z-index isn't trapped in a stacking context -->
-<div id="toast-box"
-  class="toast-box fixed left-4 right-4 max-w-sm mx-auto px-5 py-4"
-  role="status"
-  aria-live="polite"
-  style="display:none; z-index:9999; bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem));">
-  <div class="flex items-start gap-3">
-    <span class="text-lg shrink-0 leading-none" style="margin-top:2px">&#10022;</span>
-    <span id="toast-text" class="vt-font text-xl leading-snug" style="color:var(--parchment)"></span>
+<!-- Toast -->
+<div id="toast" class="toast" role="status" aria-live="polite">
+  <div class="toast-inner">
+    <span class="toast-icon">&#10022;</span>
+    <span id="toast-msg" class="toast-msg"></span>
   </div>
 </div>
 
 <script>
-// ── Generate twinkling stars ──
-(function () {
+// Stars
+(function() {
   var c = document.getElementById('stars');
-  for (var i = 0; i < 90; i++) {
-    var s  = document.createElement('div');
+  for (var i = 0; i < 80; i++) {
+    var s = document.createElement('div');
     s.className = 'star';
-    var sz = Math.random() * 2.5 + 0.5;
-    s.style.cssText = [
-      'width:' + sz + 'px', 'height:' + sz + 'px',
-      'top:' + (Math.random() * 65).toFixed(1) + '%',
-      'left:' + (Math.random() * 100).toFixed(1) + '%',
-      '--dur:' + (Math.random() * 4 + 2).toFixed(1) + 's',
-      '--delay:-' + (Math.random() * 4).toFixed(1) + 's',
-      '--min-op:' + (Math.random() * 0.2 + 0.04).toFixed(2),
-      '--max-op:' + (Math.random() * 0.5 + 0.4).toFixed(2),
-    ].join(';');
+    var sz = Math.random() * 2 + 0.5;
+    s.style.cssText =
+      'width:'+sz+'px;height:'+sz+'px;'+
+      'top:'+(Math.random()*60).toFixed(1)+'%;'+
+      'left:'+(Math.random()*100).toFixed(1)+'%;'+
+      '--dur:'+(Math.random()*4+2).toFixed(1)+'s;'+
+      '--delay:-'+(Math.random()*4).toFixed(1)+'s;'+
+      '--lo:'+(Math.random()*0.15+0.05).toFixed(2)+';'+
+      '--hi:'+(Math.random()*0.4+0.4).toFixed(2);
     c.appendChild(s);
   }
 })();
 
-// ── Vanilla JS app (no Alpine, no eval(), CSP-safe) ──
+// App
 var Burrow = (function() {
-  var user       = window._cfUser || 'John';
-  var priority   = 'normal';
-  var openPanel  = null;
+  var user = window._cfUser || 'John';
+  var priority = 'normal';
+  var openPanel = null;
   var toastTimer = null;
-
-  // Each action type has its own lock to prevent double-submits
-  // but not block unrelated actions. Safety timeout auto-unlocks
-  // after 8 seconds so a failed request never deadlocks the UI.
   var locks = {};
-  function lock(name)   { if (locks[name]) return false; locks[name] = true; setTimeout(function(){ locks[name] = false; }, 8000); return true; }
-  function unlock(name) { locks[name] = false; }
 
-  function showToast(msg) {
-    var box  = document.getElementById('toast-box');
-    var text = document.getElementById('toast-text');
-    if (!box || !text) return;
-    text.textContent = msg;
-    box.style.display = 'block';
-    // Force reflow then add class for CSS transition
-    box.offsetHeight;
-    box.classList.add('is-visible');
+  function lock(n) { if (locks[n]) return false; locks[n] = true; setTimeout(function(){ locks[n] = false; }, 8000); return true; }
+  function unlock(n) { locks[n] = false; }
+
+  function toast(msg) {
+    var el = document.getElementById('toast');
+    var tx = document.getElementById('toast-msg');
+    if (!el || !tx) return;
+    tx.textContent = msg;
+    el.style.display = 'block';
+    el.offsetHeight;
+    el.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function() {
-      box.classList.remove('is-visible');
-      setTimeout(function() { box.style.display = 'none'; }, 300);
-    }, 4500);
+      el.classList.remove('show');
+      setTimeout(function() { el.style.display = 'none'; }, 300);
+    }, 4000);
   }
 
-  // Wrapper for fetch that handles CF Access redirects gracefully.
-  function apiFetch(url, opts) {
+  function api(url, opts) {
     opts.credentials = 'same-origin';
-    return fetch(url, opts).then(function(res) {
-      var ct = res.headers.get('content-type') || '';
-      if (ct.indexOf('application/json') === -1) {
-        throw new Error('Non-JSON response (status ' + res.status + ')');
-      }
-      return res.json();
+    return fetch(url, opts).then(function(r) {
+      var ct = r.headers.get('content-type') || '';
+      if (ct.indexOf('application/json') === -1) throw new Error('Auth expired — reload page');
+      return r.json();
     });
   }
 
-  function setPriority(p) {
-    priority = p;
-    ['normal','high','urgent'].forEach(function(v) {
-      var el = document.getElementById('pri-' + v);
-      if (!el) return;
-      el.className = 'priority-pill' + (v === p ? ' p-' + v : '');
-    });
-    // Update toggle button appearance
-    var toggle = document.getElementById('priority-toggle');
-    if (toggle) {
-      if (p !== 'normal') {
-        toggle.classList.add('has-priority');
-        toggle.querySelector('.toggle-label').textContent = p.charAt(0).toUpperCase() + p.slice(1);
-      } else {
-        toggle.classList.remove('has-priority');
-        toggle.querySelector('.toggle-label').textContent = 'Priority';
-      }
-    }
-  }
-
-  function togglePriority() {
-    var row = document.getElementById('priority-row');
-    var toggle = document.getElementById('priority-toggle');
-    if (!row || !toggle) return;
-    var open = row.classList.contains('is-open');
-    if (open) {
-      row.classList.remove('is-open');
-      toggle.classList.remove('is-open');
-    } else {
-      row.classList.add('is-open');
-      toggle.classList.add('is-open');
-    }
-  }
-
-  function setDomain(el, value) {
-    var pills = document.querySelectorAll('.domain-pill');
-    for (var i = 0; i < pills.length; i++) {
-      pills[i].classList.remove('active');
-    }
-    el.classList.add('active');
-    // Store in hidden input
-    var hidden = document.getElementById('task-domain');
-    if (hidden) hidden.value = value;
-  }
-
-  function togglePanel(actionId) {
-    // Close current panel
-    if (openPanel) {
-      var oldWrap = document.getElementById('wrap-' + openPanel);
-      var oldBtn  = document.getElementById('btn-' + openPanel);
-      if (oldWrap) oldWrap.classList.remove('is-open');
-      if (oldBtn)  oldBtn.classList.remove('active');
-    }
-    if (openPanel === actionId) {
-      openPanel = null;
-      return;
-    }
-    openPanel = actionId;
-    var wrap = document.getElementById('wrap-' + actionId);
-    var btn  = document.getElementById('btn-' + actionId);
-    if (wrap) {
-      // Force reflow then open
-      wrap.offsetHeight;
-      wrap.classList.add('is-open');
-    }
-    if (btn && !btn.classList.contains('active')) btn.classList.add('active');
-    // Load panel content via HTMX
-    htmx.ajax('GET',
-      '/api/action-panel/' + actionId + '?user=' + encodeURIComponent(user),
-      { target: '#panel-' + actionId, swap: 'innerHTML' }
-    );
-  }
-
-  function closePanel() {
-    if (openPanel) {
-      var wrap = document.getElementById('wrap-' + openPanel);
-      var btn  = document.getElementById('btn-' + openPanel);
-      if (wrap) wrap.classList.remove('is-open');
-      if (btn)  btn.classList.remove('active');
-      openPanel = null;
-    }
-  }
-
-  // For coffee panel selector buttons
-  function panelSelect(el, hiddenId, value) {
-    var hidden = document.getElementById(hiddenId);
-    if (hidden) hidden.value = value;
-    var siblings = el.parentElement.querySelectorAll('button');
-    for (var i = 0; i < siblings.length; i++) {
-      siblings[i].classList.remove('active');
-    }
-    el.classList.add('active');
-  }
-
-  function fireCoffee() {
-    var size     = (document.getElementById('coffee-size') || {}).value || 'medium';
-    var drink    = (document.getElementById('coffee-drink') || {}).value || 'drip';
-    var notes    = (document.getElementById('coffee-notes') || {}).value || '';
-    var remember = (document.getElementById('coffee-remember') || {}).checked;
-    fireAction('coffee', { size: size, drink: drink, notes: notes, remember: remember });
-  }
-
-  function _setBtnLoading(btn, loading) {
+  function setLoading(btn, on) {
     if (!btn) return;
-    if (loading) {
-      btn.dataset.origText = btn.textContent;
+    if (on) {
+      btn.dataset.orig = btn.textContent;
       btn.textContent = 'Sending\u2026';
       btn.disabled = true;
       btn.classList.add('is-loading');
     } else {
-      btn.textContent = btn.dataset.origText || 'Queue it';
+      btn.textContent = btn.dataset.orig || 'Queue it';
       btn.disabled = false;
       btn.classList.remove('is-loading');
     }
   }
 
-  function submitTask() {
-    var bodyEl   = document.getElementById('task-body');
-    var domainEl = document.getElementById('task-domain');
-    var btnEl    = document.getElementById('btn-submit');
-    var body = (bodyEl ? bodyEl.value : '').trim();
-    if (!body) { showToast('Type something first'); return; }
-    if (!lock('submit')) return;
-    _setBtnLoading(btnEl, true);
+  function togglePanel(id) {
+    if (openPanel) {
+      var ow = document.getElementById('slot-' + openPanel);
+      var ob = document.getElementById('act-' + openPanel);
+      if (ow) ow.classList.remove('is-open');
+      if (ob) ob.classList.remove('active');
+    }
+    if (openPanel === id) { openPanel = null; return; }
+    openPanel = id;
+    var w = document.getElementById('slot-' + id);
+    var b = document.getElementById('act-' + id);
+    if (w) { w.offsetHeight; w.classList.add('is-open'); }
+    if (b) b.classList.add('active');
+    htmx.ajax('GET', '/api/action-panel/' + id + '?user=' + encodeURIComponent(user),
+      { target: '#panel-' + id, swap: 'innerHTML' });
+  }
 
-    var prefix    = priority === 'urgent' ? '!! '
-                  : priority === 'high'   ? '! ' : '';
-    var domPrefix = domainEl && domainEl.value ? domainEl.value + ': ' : '';
+  function closePanel() {
+    if (!openPanel) return;
+    var w = document.getElementById('slot-' + openPanel);
+    var b = document.getElementById('act-' + openPanel);
+    if (w) w.classList.remove('is-open');
+    if (b) b.classList.remove('active');
+    openPanel = null;
+  }
 
-    var payload = { body: prefix + domPrefix + body, user: user };
+  function panelSelect(el, hiddenId, val) {
+    var h = document.getElementById(hiddenId);
+    if (h) h.value = val;
+    var sibs = el.parentElement.querySelectorAll('button');
+    for (var i = 0; i < sibs.length; i++) sibs[i].classList.remove('active');
+    el.classList.add('active');
+  }
 
-    apiFetch('/api/task', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload),
-    })
-    .then(function(data) {
-      if (data.ticket_id) {
-        showToast('\u2605 Added: ' + data.enhanced);
-        if (bodyEl) bodyEl.value = '';
-        // Reset domain pills
-        var pills = document.querySelectorAll('.domain-pill');
-        for (var i = 0; i < pills.length; i++) pills[i].classList.remove('active');
-        if (pills[0]) pills[0].classList.add('active');
-        if (domainEl) domainEl.value = '';
-        setPriority('normal');
-        // Collapse priority if open
-        var row = document.getElementById('priority-row');
-        var toggle = document.getElementById('priority-toggle');
-        if (row) row.classList.remove('is-open');
-        if (toggle) toggle.classList.remove('is-open');
-        htmx.trigger('#queue-list', 'refresh');
-      } else {
-        showToast('\u2717 ' + (data.error || 'something went wrong'));
-      }
-    })
-    .catch(function(e) {
-      showToast('\u2717 ' + (e.message || 'Network error'));
-    })
-    .finally(function() {
-      unlock('submit');
-      _setBtnLoading(btnEl, false);
+  function fireCoffee() {
+    fireAction('coffee', {
+      size: (document.getElementById('coffee-size') || {}).value || 'medium',
+      drink: (document.getElementById('coffee-drink') || {}).value || 'drip',
+      notes: (document.getElementById('coffee-notes') || {}).value || '',
+      remember: (document.getElementById('coffee-remember') || {}).checked
     });
+  }
+
+  function submitTask() {
+    var inp = document.getElementById('cmd-input');
+    var btn = document.getElementById('cmd-submit');
+    var body = (inp ? inp.value : '').trim();
+    if (!body) { toast('Type something first'); return; }
+    if (!lock('submit')) return;
+    setLoading(btn, true);
+
+    var prefix = priority === 'urgent' ? '!! ' : priority === 'high' ? '! ' : '';
+    api('/api/task', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body: prefix + body, user: user })
+    })
+    .then(function(d) {
+      if (d.ticket_id) {
+        toast('\u2605 ' + d.enhanced);
+        inp.value = '';
+        priority = 'normal';
+        htmx.trigger('#quest-log', 'refresh');
+      } else toast('\u2717 ' + (d.error || 'Something went wrong'));
+    })
+    .catch(function(e) { toast('\u2717 ' + e.message); })
+    .finally(function() { unlock('submit'); setLoading(btn, false); });
   }
 
   function fireAction(actionId, payload) {
     if (!lock('action')) return;
-    // Find the submit button inside the open panel
     var panel = document.getElementById('panel-' + actionId);
-    var btn = panel ? panel.querySelector('.btn-primary') : null;
-    _setBtnLoading(btn, true);
+    var btn = panel ? panel.querySelector('.panel-submit') : null;
+    setLoading(btn, true);
 
     var p = {};
     for (var k in payload) p[k] = payload[k];
@@ -919,97 +792,72 @@ var Burrow = (function() {
     p.user = user;
     p.priority = priority;
 
-    apiFetch('/api/quick-action', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(p),
-    })
-    .then(function(data) {
-      if (data.ticket_id) {
-        showToast('\u2605 Added: ' + data.enhanced);
-        closePanel();
-        setPriority('normal');
-        htmx.trigger('#queue-list', 'refresh');
-      } else {
-        showToast('\u2717 ' + (data.error || 'something went wrong'));
-      }
-    })
-    .catch(function(e) { showToast('\u2717 ' + (e.message || 'Network error')); })
-    .finally(function() {
-      unlock('action');
-      _setBtnLoading(btn, false);
-    });
-  }
-
-  function completeTask(ticketId) {
-    if (!lock('done-' + ticketId)) return;
-    // Find the quest item and animate it out
-    var doneBtn = document.querySelector('[onclick*="' + ticketId + '"]');
-    var questItem = doneBtn ? doneBtn.closest('.quest-item') : null;
-    if (questItem) questItem.classList.add('is-done');
-
-    apiFetch('/api/task/' + ticketId + '/done', {
+    api('/api/quick-action', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p)
     })
-    .then(function(data) {
-      if (data.ok) {
-        showToast('\u2714 Quest complete!');
-        // Delay refresh so animation plays
-        setTimeout(function() {
-          htmx.trigger('#queue-list', 'refresh');
-        }, 300);
+    .then(function(d) {
+      if (d.ticket_id) {
+        toast('\u2605 ' + d.enhanced);
+        closePanel();
+        priority = 'normal';
+        htmx.trigger('#quest-log', 'refresh');
+      } else toast('\u2717 ' + (d.error || 'Something went wrong'));
+    })
+    .catch(function(e) { toast('\u2717 ' + e.message); })
+    .finally(function() { unlock('action'); setLoading(btn, false); });
+  }
+
+  function completeTask(tid) {
+    if (!lock('done-' + tid)) return;
+    var btn = document.querySelector('[data-tid="' + tid + '"]');
+    var item = btn ? btn.closest('.quest') : null;
+    if (item) item.classList.add('is-done');
+
+    api('/api/task/' + tid + '/done', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+    .then(function(d) {
+      if (d.ok) {
+        toast('\u2714 Quest complete!');
+        setTimeout(function() { htmx.trigger('#quest-log', 'refresh'); }, 300);
       } else {
-        showToast('\u2717 ' + (data.error || 'something went wrong'));
-        if (questItem) questItem.classList.remove('is-done');
+        toast('\u2717 ' + (d.error || 'Something went wrong'));
+        if (item) item.classList.remove('is-done');
       }
     })
-    .catch(function(e) {
-      showToast('\u2717 ' + (e.message || 'Network error'));
-      if (questItem) questItem.classList.remove('is-done');
-    })
-    .finally(function() { unlock('done-' + ticketId); });
+    .catch(function(e) { toast('\u2717 ' + e.message); if (item) item.classList.remove('is-done'); })
+    .finally(function() { unlock('done-' + tid); });
   }
 
   return {
-    showToast:      showToast,
-    setPriority:    setPriority,
-    togglePriority: togglePriority,
-    setDomain:      setDomain,
-    togglePanel:    togglePanel,
-    closePanel:     closePanel,
-    panelSelect:    panelSelect,
-    fireCoffee:     fireCoffee,
-    submitTask:     submitTask,
-    fireAction:     fireAction,
-    completeTask:   completeTask,
+    toast: toast,
+    togglePanel: togglePanel,
+    closePanel: closePanel,
+    panelSelect: panelSelect,
+    fireCoffee: fireCoffee,
+    submitTask: submitTask,
+    fireAction: fireAction,
+    completeTask: completeTask
   };
 })();
 
-// ── Time-aware greeting ──
+// Greeting
 (function() {
   var el = document.getElementById('greeting');
   if (!el) return;
   var h = new Date().getHours();
-  var period = h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening';
-  var user = window._cfUser || '';
-  if (user === 'John') {
-    el.textContent = '\u2726 ' + period + ', John.';
-  } else if (user === 'Jeannie') {
-    el.textContent = '\u2726 Hey Jeannie!';
-  } else {
-    el.textContent = '\u2726 Welcome.';
-  }
+  var t = h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening';
+  var u = window._cfUser || '';
+  el.textContent = u === 'Jeannie' ? 'Hey Jeannie!' : t + ', ' + (u || 'traveler') + '.';
 })();
 
 if ('serviceWorker' in navigator) {
-  var _swRefreshing = false;
-  navigator.serviceWorker.addEventListener('controllerchange', function() {
-    if (_swRefreshing) return;
-    _swRefreshing = true;
-    window.location.reload();
-  });
-  navigator.serviceWorker.register('/sw.js').catch(function() {});
+  var _sw = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function() { if (!_sw) { _sw = true; location.reload(); } });
+  navigator.serviceWorker.register('/sw.js').catch(function(){});
 }
 </script>
 </body>

@@ -1,72 +1,49 @@
 {% if tickets %}
   {% for t in tickets %}
-  <div class="quest-item flex items-center gap-3 px-4 py-3 mb-2
-    {%- if loop.first %} p-head
-    {%- elif t.priority in ('critical','urgent') %} p-urgent
-    {%- elif t.priority == 'high' %} p-high
-    {%- else %} p-normal{%- endif %}">
+  <div class="quest
+    {%- if loop.first %} q-head
+    {%- elif t.priority in ('critical','urgent') %} q-urgent
+    {%- elif t.priority == 'high' %} q-high
+    {%- else %} q-normal{%- endif %}">
 
-    <!-- Priority indicator -->
-    <div class="shrink-0 w-6 text-center">
-      {% if loop.first %}
-        <span class="vt-font text-2xl" style="color:var(--green-bright)">★</span>
-      {% elif t.priority in ('critical','urgent') %}
-        <span class="vt-font text-2xl" style="color:#e87060">‼</span>
-      {% elif t.priority == 'high' %}
-        <span class="vt-font text-xl" style="color:var(--amber)">!</span>
-      {% else %}
-        <span class="vt-font text-xl" style="color:var(--text-dim)">{{ loop.index }}</span>
-      {% endif %}
+    <div class="quest-rank"
+      style="color:
+      {%- if loop.first %}var(--green)
+      {%- elif t.priority in ('critical','urgent') %}var(--red)
+      {%- elif t.priority == 'high' %}var(--amber)
+      {%- else %}var(--text-dim){%- endif %}">
+      {% if loop.first %}★
+      {% elif t.priority in ('critical','urgent') %}‼
+      {% elif t.priority == 'high' %}!
+      {% else %}{{ loop.index }}{% endif %}
     </div>
 
-    <!-- Task body -->
-    <div class="flex-1 min-w-0">
-      <div class="text-body" style="margin-bottom:3px">
-        {{ t.title }}
-      </div>
-      <div class="flex items-center gap-2 flex-wrap">
-        {% if t.domain %}
-        <span class="badge">{{ t.domain }}</span>
-        {% endif %}
-        {% if t.est_min %}
-        <span class="vt-font" style="font-size:1.05rem; color:var(--text-dim)">{{ t.est_min }}m</span>
-        {% endif %}
-        {% if t.status == 'active' %}
-        <span class="text-caption" style="font-weight:700; color:var(--green-bright)">● active</span>
-        {% endif %}
+    <div class="quest-body">
+      <div class="quest-title">{{ t.title }}</div>
+      <div class="quest-meta">
+        {% if t.domain %}<span class="quest-badge">{{ t.domain }}</span>{% endif %}
+        {% if t.est_min %}<span class="quest-time">{{ t.est_min }}m</span>{% endif %}
+        {% if loop.first %}<span class="quest-head-tag">HEAD</span>{% endif %}
       </div>
     </div>
 
-    <!-- HEAD badge (first item in queue) -->
-    {% if loop.first %}
-    <span class="shrink-0 text-caption"
-      style="font-weight:700;
-             background:rgba(126,200,80,0.1);
-             border:1px solid rgba(126,200,80,0.3);
-             color:var(--green-bright);
-             padding:2px 8px; border-radius:2px;
-             white-space:nowrap">
-      HEAD
-    </span>
-    {% endif %}
-
-    <!-- Done button — 36px for mobile tap targets -->
-    <button class="btn-done"
+    <button class="quest-done"
+      data-tid="{{ t.id }}"
       onclick="Burrow.completeTask('{{ t.id }}')"
-      aria-label="Mark task done"
+      aria-label="Mark done"
       title="Mark done">
-      <svg viewBox="0 0 14 14" width="16" height="16" fill="none" stroke="var(--text-dim)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg viewBox="0 0 14 14" width="16" height="16" fill="none"
+        stroke="var(--text-dim)" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <path d="M2 7l4 4 6-7"/>
       </svg>
     </button>
   </div>
   {% endfor %}
-
 {% else %}
-  <!-- Empty state -->
-  <div class="pixel-panel p-8 text-center">
-    <div class="text-5xl mb-4" style="filter:drop-shadow(0 2px 6px rgba(0,0,0,0.5))">🌱</div>
-    <div class="text-body" style="color:var(--text-dim); margin-bottom:8px">Quest log is empty.</div>
-    <div class="vt-font text-xl" style="color:var(--text-dim)">Enjoy the day!</div>
+  <div class="empty-state">
+    <div class="empty-icon">🌱</div>
+    <div class="empty-text">Quest log is empty.</div>
+    <div class="empty-sub">Enjoy the day!</div>
   </div>
 {% endif %}

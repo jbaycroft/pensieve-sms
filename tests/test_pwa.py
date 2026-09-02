@@ -106,7 +106,7 @@ def test_home_contains_greeting_names(client):
 
 def test_home_contains_htmx_queue_element(client):
     r = client.get("/")
-    assert b"queue-list" in r.data
+    assert b"quest-log" in r.data
 
 
 # ── queue partial ─────────────────────────────────────────────────────────────

@@ -1,90 +1,71 @@
 {% if action.type == 'coffee' %}
-{# ── Coffee order panel ── #}
 <div id="coffee-panel-inner">
-  <div class="flex items-center justify-between mb-4">
-    <div>
-      <div class="section-label" style="letter-spacing:0.08em; color:var(--amber)">
-        ☕ Coffee Order
-      </div>
-      <div class="vt-font text-xl mt-1" style="color:var(--text-muted)">
-        for <span style="color:var(--green-bright)">{{ user }}</span>
-      </div>
+  <div class="panel-header">
+    <div class="panel-title">☕ Coffee Order
+      <span style="font-weight:400; color:var(--text-muted); font-size:0.8rem">for {{ user }}</span>
     </div>
-    <button onclick="Burrow.closePanel()" class="btn-ghost" style="font-size:0.8rem">✕ close</button>
+    <button onclick="Burrow.closePanel()" class="panel-close">✕</button>
   </div>
 
-  <!-- Size -->
-  <div class="mb-3">
-    <div class="section-label mb-2">Size</div>
-    <div class="grid grid-cols-3 gap-2">
+  <div style="margin-bottom:0.75rem">
+    <div class="panel-label">Size</div>
+    <div class="sel-grid">
       {% for s in ['small','medium','large'] %}
       <button onclick="Burrow.panelSelect(this,'coffee-size','{{ s }}')"
-        class="action-btn{% if prefs.size == s %} active{% endif %} py-2 capitalize text-panel-btn"
+        class="sel-btn{% if prefs.size == s %} active{% endif %}"
         data-value="{{ s }}">{{ s }}</button>
       {% endfor %}
     </div>
   </div>
 
-  <!-- Drink type -->
-  <div class="mb-3">
-    <div class="section-label mb-2">Drink</div>
-    <div class="flex flex-wrap gap-2">
+  <div style="margin-bottom:0.75rem">
+    <div class="panel-label">Drink</div>
+    <div class="sel-wrap">
       {% for d in ['drip','espresso','latte','cappuccino','americano','cold brew'] %}
       <button onclick="Burrow.panelSelect(this,'coffee-drink','{{ d }}')"
-        class="action-btn{% if prefs.drink == d %} active{% endif %} px-3 py-2 capitalize text-panel-btn"
-        style="font-size:0.8rem" data-value="{{ d }}">{{ d }}</button>
+        class="sel-btn{% if prefs.drink == d %} active{% endif %}"
+        data-value="{{ d }}">{{ d }}</button>
       {% endfor %}
     </div>
   </div>
 
-  <!-- Notes -->
-  <div class="mb-4">
-    <div class="section-label mb-2">Notes</div>
+  <div style="margin-bottom:1rem">
+    <div class="panel-label">Notes</div>
     <input type="text" id="coffee-notes"
       value="{{ prefs.notes | replace('\"', '&quot;') }}"
       placeholder="oat milk, 1 sugar…"
       autocomplete="off"
       aria-label="Coffee order notes"
-      class="burrow-input">
+      class="panel-input">
   </div>
 
-  <!-- Footer: remember + submit -->
-  <div class="flex items-center justify-between gap-4">
-    <label class="flex items-center gap-2 cursor-pointer">
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem">
+    <label style="display:flex; align-items:center; gap:6px; cursor:pointer">
       <input type="checkbox" id="coffee-remember" checked>
-      <span class="text-caption" style="font-size:0.8rem; font-weight:500; color:var(--text-muted)">Remember</span>
+      <span style="font-size:0.75rem; font-weight:500; color:var(--text-muted)">Remember</span>
     </label>
-    <button onclick="Burrow.fireCoffee()" class="btn-primary">Queue it</button>
+    <button onclick="Burrow.fireCoffee()" class="panel-submit" style="width:auto; padding:0 28px">Queue it</button>
   </div>
 
-  <!-- Hidden state for panel selectors -->
   <input type="hidden" id="coffee-size" value="{{ prefs.size }}">
   <input type="hidden" id="coffee-drink" value="{{ prefs.drink }}">
 </div>
 
 {% elif action.type == 'prefilled' %}
-{# ── One-tap prefilled action ── #}
 <div>
-  <div class="flex items-center justify-between mb-3">
-    <div class="text-panel-title">
-      {{ action.icon }} {{ action.label }}
-    </div>
-    <button onclick="Burrow.closePanel()" class="btn-ghost" style="font-size:0.8rem">✕ close</button>
+  <div class="panel-header">
+    <div class="panel-title">{{ action.icon }} {{ action.label }}</div>
+    <button onclick="Burrow.closePanel()" class="panel-close">✕</button>
   </div>
-  <p class="vt-font text-xl mb-4" style="color:var(--parchment-dk)">{{ action.task }}</p>
-  <button onclick="Burrow.fireAction('{{ action.id }}', {})" class="btn-primary w-full">
-    Queue it
-  </button>
+  <p style="font-family:'VT323',monospace; font-size:1.2rem; color:var(--parchment-dk); margin-bottom:1rem">{{ action.task }}</p>
+  <button onclick="Burrow.fireAction('{{ action.id }}', {})" class="panel-submit">Queue it</button>
 </div>
 
 {% else %}
-{# ── Freeform action ── #}
 <div>
-  <div class="flex items-center justify-between mb-3">
-    <div class="text-panel-title">
-      {{ action.icon }} {{ action.label }}
-    </div>
-    <button onclick="Burrow.closePanel()" class="btn-ghost" style="font-size:0.8rem">✕ close</button>
+  <div class="panel-header">
+    <div class="panel-title">{{ action.icon }} {{ action.label }}</div>
+    <button onclick="Burrow.closePanel()" class="panel-close">✕</button>
   </div>
   <input type="text"
     id="panel-input-{{ action.id }}"
@@ -92,14 +73,10 @@
     placeholder="What needs doing?"
     autocomplete="off"
     aria-label="Task description"
-    class="burrow-input mb-3">
+    class="panel-input"
+    style="margin-bottom:0.75rem">
   <button onclick="Burrow.fireAction('{{ action.id }}',{body:document.getElementById('panel-input-{{ action.id }}').value})"
-    class="btn-primary w-full">
-    Queue it
-  </button>
-  <script>
-    // Auto-focus the input after HTMX loads this panel
-    setTimeout(function(){var el=document.getElementById('panel-input-{{ action.id }}');if(el)el.focus();},50);
-  </script>
+    class="panel-submit">Queue it</button>
+  <script>setTimeout(function(){var el=document.getElementById('panel-input-{{ action.id }}');if(el)el.focus();},80);</script>
 </div>
 {% endif %}

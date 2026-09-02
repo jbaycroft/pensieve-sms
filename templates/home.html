@@ -1,136 +1,83 @@
 {% extends "base.html" %}
 {% block content %}
+<div class="app">
 
-  <div class="max-w-lg mx-auto px-4 pb-32"
-       style="padding-top: max(1.5rem, env(safe-area-inset-top))">
+  <!-- Header -->
+  <div class="header">
+    <h1>&#8962; The Burrow</h1>
+    <div id="greeting" class="greeting">&#10022; Welcome.</div>
+  </div>
 
-    <!-- ── Header ── -->
-    <div class="flex items-start justify-between" style="margin-bottom:1.25rem">
-      <div>
-        <h1 class="pixel-font mb-2"
-            style="font-size:0.875rem; color:var(--amber); text-shadow:2px 2px 0 rgba(0,0,0,0.6); line-height:1.6">
-          &#8962; The Burrow
-        </h1>
-        <p id="greeting" class="vt-font text-2xl" style="color:var(--text-muted)">
-          &#10022; Welcome.
-        </p>
-      </div>
-    </div>
+  <!-- Command bar -->
+  <div class="command-bar">
+    <input type="text"
+      id="cmd-input"
+      class="command-input"
+      placeholder="What needs doing?"
+      onkeydown="if(event.key==='Enter')Burrow.submitTask()"
+      autocomplete="off"
+      inputmode="text"
+      aria-label="Task description">
+    <button id="cmd-submit"
+      class="command-submit"
+      onclick="Burrow.submitTask()">Queue it</button>
+  </div>
 
-    <!-- ── Quick Actions grid ── -->
-    <div class="mb-2">
-      <div class="section-label mb-3">&#9889; Quick Actions</div>
-      <div class="grid grid-cols-3 gap-3">
-        {% for action in actions %}
-        <button
-          onclick="Burrow.togglePanel('{{ action.id }}')"
-          id="btn-{{ action.id }}"
-          class="action-btn p-3 text-center flex flex-col items-center justify-center gap-2"
-          aria-label="{{ action.label }}">
-          <div class="text-3xl leading-none">{{ action.icon }}</div>
-          <div class="text-action-label">{{ action.label }}</div>
-        </button>
-        {% endfor %}
-      </div>
-    </div>
-
-    <!-- ── Action panels (HTMX loaded on demand) ── -->
+  <!-- Quick actions -->
+  <div class="actions">
     {% for action in actions %}
-    <div id="wrap-{{ action.id }}" class="panel-wrap mt-3 mb-2">
-      <div id="panel-{{ action.id }}" class="pixel-panel p-5">
-        <div class="vt-font text-xl text-center" style="color:var(--text-dim)">Loading&#8230;</div>
-      </div>
-    </div>
+    <button
+      id="act-{{ action.id }}"
+      class="action-icon"
+      onclick="Burrow.togglePanel('{{ action.id }}')"
+      title="{{ action.label }}"
+      aria-label="{{ action.label }}">
+      {{ action.icon }}
+    </button>
     {% endfor %}
+  </div>
 
-    <!-- ── Free-form task entry ── -->
-    <div class="pixel-panel p-4" style="margin-top:1.25rem; margin-bottom:1rem">
-      <div class="flex items-center justify-between mb-3">
-        <div class="section-label">&#9998; Add Task</div>
-        <button id="priority-toggle" onclick="Burrow.togglePriority()" class="priority-toggle">
-          <span class="toggle-label">Priority</span>
-          <span class="arrow">▼</span>
-        </button>
-      </div>
-
-      <!-- Collapsible priority row -->
-      <div id="priority-row" class="priority-row">
-        <div class="grid grid-cols-3 gap-2">
-          <button onclick="Burrow.setPriority('normal')" id="pri-normal" class="priority-pill p-normal">
-            <span>&#9898;</span><span>Normal</span>
-          </button>
-          <button onclick="Burrow.setPriority('high')" id="pri-high" class="priority-pill">
-            <span>&#9733;</span><span>High</span>
-          </button>
-          <button onclick="Burrow.setPriority('urgent')" id="pri-urgent" class="priority-pill">
-            <span>&#8252;</span><span>Urgent</span>
-          </button>
-        </div>
-      </div>
-
-      <input type="text"
-        id="task-body"
-        onkeydown="if(event.key==='Enter')Burrow.submitTask()"
-        placeholder="What needs doing?"
-        autocomplete="off"
-        inputmode="text"
-        aria-label="Task description"
-        class="burrow-input" style="margin-top:0.75rem">
-
-      <!-- Domain pills -->
-      <div class="flex flex-wrap gap-2" style="margin-top:0.5rem">
-        <button onclick="Burrow.setDomain(this,'')" class="domain-pill active">Auto</button>
-        <button onclick="Burrow.setDomain(this,'w')" class="domain-pill">Work</button>
-        <button onclick="Burrow.setDomain(this,'h')" class="domain-pill">Hydro</button>
-        <button onclick="Burrow.setDomain(this,'p')" class="domain-pill">Property</button>
-        <button onclick="Burrow.setDomain(this,'f')" class="domain-pill">Physical</button>
-        <button onclick="Burrow.setDomain(this,'ho')" class="domain-pill">Hobby</button>
-        <button onclick="Burrow.setDomain(this,'c')" class="domain-pill">Social</button>
-      </div>
-      <input type="hidden" id="task-domain" value="">
-
-      <button onclick="Burrow.submitTask()" id="btn-submit" class="btn-primary w-full" style="margin-top:0.75rem">Queue it</button>
+  <!-- Expandable action panels -->
+  {% for action in actions %}
+  <div id="slot-{{ action.id }}" class="panel-slot">
+    <div id="panel-{{ action.id }}" class="panel">
+      <div style="text-align:center; padding:1rem 0; color:var(--text-dim); font-family:'VT323',monospace; font-size:1.2rem">Loading&#8230;</div>
     </div>
+  </div>
+  {% endfor %}
 
-    <!-- ── Quest Log ── -->
-    <div class="flex items-center justify-between mb-3">
-      <div class="section-label">&#128220; Quest Log</div>
-      <button
-        hx-get="/api/queue"
-        hx-target="#queue-list"
-        hx-swap="innerHTML"
-        class="btn-ghost">&#8635; refresh</button>
-    </div>
+  <hr class="divider">
 
-    <div id="queue-list"
-         hx-get="/api/queue"
-         hx-trigger="load, refresh"
-         hx-swap="innerHTML">
-      <!-- Skeleton while loading -->
-      <div class="space-y-2">
-        <div class="quest-item p-normal flex gap-3 px-4 py-4">
-          <div class="skeleton w-5 h-5 shrink-0 mt-1 rounded"></div>
-          <div class="flex-1 space-y-2">
-            <div class="skeleton h-4 rounded" style="width:65%"></div>
-            <div class="skeleton h-3 rounded" style="width:35%"></div>
-          </div>
-        </div>
-        <div class="quest-item p-normal flex gap-3 px-4 py-4">
-          <div class="skeleton w-5 h-5 shrink-0 mt-1 rounded"></div>
-          <div class="flex-1 space-y-2">
-            <div class="skeleton h-4 rounded" style="width:80%"></div>
-            <div class="skeleton h-3 rounded" style="width:25%"></div>
-          </div>
-        </div>
-        <div class="quest-item p-normal flex gap-3 px-4 py-4">
-          <div class="skeleton w-5 h-5 shrink-0 mt-1 rounded"></div>
-          <div class="flex-1 space-y-2">
-            <div class="skeleton h-4 rounded" style="width:50%"></div>
-            <div class="skeleton h-3 rounded" style="width:40%"></div>
-          </div>
-        </div>
+  <!-- Quest log -->
+  <div class="log-header">
+    <div class="log-title">&#128220; Quest Log</div>
+    <button
+      hx-get="/api/queue"
+      hx-target="#quest-log"
+      hx-swap="innerHTML"
+      class="log-refresh">&#8635; refresh</button>
+  </div>
+
+  <div id="quest-log"
+       hx-get="/api/queue"
+       hx-trigger="load, refresh"
+       hx-swap="innerHTML">
+    <!-- Skeleton -->
+    <div class="quest q-normal" style="animation:none">
+      <div class="skel" style="width:22px;height:22px;flex-shrink:0"></div>
+      <div class="quest-body">
+        <div class="skel" style="height:14px;width:65%;margin-bottom:6px"></div>
+        <div class="skel" style="height:10px;width:30%"></div>
       </div>
     </div>
+    <div class="quest q-normal" style="animation:none">
+      <div class="skel" style="width:22px;height:22px;flex-shrink:0"></div>
+      <div class="quest-body">
+        <div class="skel" style="height:14px;width:80%;margin-bottom:6px"></div>
+        <div class="skel" style="height:10px;width:25%"></div>
+      </div>
+    </div>
+  </div>
 
-  </div><!-- /main app -->
+</div>
 {% endblock %}
