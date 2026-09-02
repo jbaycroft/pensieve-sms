@@ -16,12 +16,11 @@
   <script>window._cfUser = {{ cf_user | tojson }};</script>
   <script src="/static/htmx.min.js"></script>
   <style>
-    /* ── Tailwind utility replacements (no CDN dependency) ── */
+    /* ── Layout utilities ── */
     .flex { display: flex; }
     .inline-flex { display: inline-flex; }
     .grid { display: grid; }
     .hidden { display: none; }
-    .block { display: block; }
     .flex-1 { flex: 1 1 0%; }
     .flex-col { flex-direction: column; }
     .flex-wrap { flex-wrap: wrap; }
@@ -34,32 +33,30 @@
     .gap-2 { gap: 0.5rem; }
     .gap-3 { gap: 0.75rem; }
     .gap-4 { gap: 1rem; }
-    .gap-5 { gap: 1.25rem; }
-    .p-1 { padding: 0.25rem; }
     .p-3 { padding: 0.75rem; }
     .p-4 { padding: 1rem; }
     .p-5 { padding: 1.25rem; }
     .p-8 { padding: 2rem; }
+    .px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
     .px-4 { padding-left: 1rem; padding-right: 1rem; }
     .px-5 { padding-left: 1.25rem; padding-right: 1.25rem; }
+    .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
     .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
     .pb-32 { padding-bottom: 8rem; }
     .mb-2 { margin-bottom: 0.5rem; }
     .mb-3 { margin-bottom: 0.75rem; }
     .mb-4 { margin-bottom: 1rem; }
     .mb-5 { margin-bottom: 1.25rem; }
-    .mb-6 { margin-bottom: 1.5rem; }
     .mt-1 { margin-top: 0.25rem; }
     .mt-3 { margin-top: 0.75rem; }
     .mt-5 { margin-top: 1.25rem; }
-    .mt-0\.5 { margin-top: 0.125rem; }
     .ml-3 { margin-left: 0.75rem; }
-    .mr-2 { margin-right: 0.5rem; }
     .mx-auto { margin-left: auto; margin-right: auto; }
     .max-w-lg { max-width: 32rem; }
     .max-w-sm { max-width: 24rem; }
     .min-w-0 { min-width: 0; }
     .w-5 { width: 1.25rem; }
+    .w-6 { width: 1.5rem; }
     .w-full { width: 100%; }
     .h-3 { height: 0.75rem; }
     .h-4 { height: 1rem; }
@@ -71,7 +68,7 @@
     .text-xl { font-size: 1.25rem; line-height: 1.75rem; }
     .text-2xl { font-size: 1.5rem; line-height: 2rem; }
     .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
-    .text-6xl { font-size: 3.75rem; line-height: 1; }
+    .text-5xl { font-size: 3rem; line-height: 1; }
     .leading-none { line-height: 1; }
     .leading-snug { line-height: 1.375; }
     .capitalize { text-transform: capitalize; }
@@ -85,26 +82,8 @@
     .z-50 { z-index: 50; }
     .overflow-hidden { overflow: hidden; }
     .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .whitespace-nowrap, .white-space-nowrap { white-space: nowrap; }
     .pointer-events-none { pointer-events: none; }
-    .opacity-0 { opacity: 0; }
-    .opacity-100 { opacity: 1; }
-    .translate-y-0 { transform: translateY(0); }
-    .text-5xl { font-size: 3rem; line-height: 1; }
-    .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-    .px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
-    .w-6 { width: 1.5rem; }
     .select-none { user-select: none; }
-    .translate-y-2 { transform: translateY(0.5rem); }
-    .translate-y-3 { transform: translateY(0.75rem); }
-    .-translate-y-1 { transform: translateY(-0.25rem); }
-    .transition { transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
-    .ease-out { transition-timing-function: cubic-bezier(0, 0, 0.2, 1); }
-    .ease-in { transition-timing-function: cubic-bezier(0.4, 0, 1, 1); }
-    .duration-100 { transition-duration: 100ms; }
-    .duration-150 { transition-duration: 150ms; }
-    .duration-200 { transition-duration: 200ms; }
-    .duration-300 { transition-duration: 300ms; }
 
     [x-cloak] { display: none !important; }
     * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
@@ -119,7 +98,6 @@
       --border-dark: #5c3d11;
       --border-mid:  #8b6020;
       --border-gold: #c49a2f;
-      /* Text — all pass WCAG AA on dark backgrounds */
       --parchment:   #f0ddb0;
       --parchment-dk:#cca870;
       --text-muted:  #c4a070;
@@ -130,6 +108,7 @@
       --amber:       #e8b030;
       --amber-dark:  #b07820;
       --red-warm:    #c43828;
+      --anim-speed:  1;
     }
 
     body {
@@ -185,15 +164,6 @@
       content: ''; position: absolute; inset: 2px;
       border: 1px solid rgba(196,154,47,0.15);
       border-radius: 2px; pointer-events: none;
-    }
-    .pixel-panel-sm {
-      background: var(--wood-dark);
-      border: 2px solid var(--border-dark);
-      box-shadow:
-        inset 1px 1px 0 rgba(196,154,47,0.5),
-        inset -1px -1px 0 #2a1406,
-        2px 2px 0 rgba(0,0,0,0.4);
-      border-radius: 3px;
     }
 
     /* ── Fonts ── */
@@ -261,29 +231,6 @@
       box-shadow: inset 2px 2px 4px rgba(0,0,0,0.4), 0 0 0 2px rgba(74,138,40,0.25);
     }
 
-    /* ── Select ── */
-    .burrow-select {
-      background: var(--wood-dark);
-      border: 2px solid var(--border-dark);
-      box-shadow: inset 2px 2px 4px rgba(0,0,0,0.4);
-      color: var(--parchment-dk);
-      border-radius: 3px;
-      padding: 13px 36px 13px 14px;
-      font-size: 0.875rem;
-      font-weight: 500;
-      outline: none;
-      font-family: 'Inter', sans-serif;
-      cursor: pointer;
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a08858' stroke-width='2' fill='none' stroke-linecap='square'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 12px center;
-      transition: border-color 0.15s;
-      min-height: 48px;
-    }
-    .burrow-select:focus { border-color: var(--green-mid); }
-    .burrow-select option { background: #1e1208; }
-
     /* ── Primary button ── */
     .btn-primary {
       background: var(--green-dark);
@@ -301,11 +248,12 @@
       padding: 0 22px;
       min-height: 48px;
       cursor: pointer;
-      transition: all 0.1s;
+      transition: all 0.15s;
       white-space: nowrap;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      gap: 6px;
     }
     .btn-primary:hover {
       background: var(--green-mid);
@@ -317,6 +265,19 @@
       box-shadow: inset 2px 2px 0 rgba(0,0,0,0.3), 1px 1px 0 rgba(0,0,0,0.4);
     }
     .btn-primary.w-full { width: 100%; }
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-primary.is-loading {
+      pointer-events: none;
+      animation: btn-pulse 1s ease-in-out infinite;
+    }
+    @keyframes btn-pulse {
+      0%, 100% { border-color: var(--green-mid); }
+      50%      { border-color: var(--green-bright); box-shadow: 0 0 12px rgba(126,200,80,0.3); }
+    }
 
     /* ── Priority pills ── */
     .priority-pill {
@@ -343,6 +304,72 @@
     .priority-pill.p-high   { background: #3d2800; border-color: #a07020; color: var(--amber); }
     .priority-pill.p-urgent { background: #3d0f0a; border-color: #8b2818; color: #e87060; }
 
+    /* ── Domain pills ── */
+    .domain-pill {
+      border: 2px solid var(--border-dark);
+      background: var(--wood-dark);
+      box-shadow: inset 1px 1px 0 rgba(196,154,47,0.15), 1px 1px 0 rgba(0,0,0,0.3);
+      color: var(--text-dim);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.72rem;
+      font-weight: 600;
+      border-radius: 3px;
+      padding: 6px 10px;
+      min-height: 36px;
+      cursor: pointer;
+      transition: all 0.1s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+    }
+    .domain-pill:hover { background: var(--wood-light); color: var(--parchment-dk); }
+    .domain-pill.active {
+      background: var(--wood-light);
+      border-color: var(--border-mid);
+      color: var(--parchment-dk);
+    }
+
+    /* ── Priority toggle ── */
+    .priority-toggle {
+      background: none;
+      border: 1px solid var(--border-dark);
+      border-radius: 3px;
+      color: var(--text-dim);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .priority-toggle:hover { border-color: var(--border-mid); color: var(--text-muted); }
+    .priority-toggle .arrow {
+      transition: transform 0.2s;
+      font-size: 0.6rem;
+    }
+    .priority-toggle.is-open .arrow { transform: rotate(180deg); }
+    .priority-toggle.has-priority { color: var(--amber); border-color: var(--amber-dark); }
+
+    /* ── Collapsible priority row ── */
+    .priority-row {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.25s ease-out, opacity 0.2s ease-out, margin 0.25s ease-out;
+      margin-top: 0;
+    }
+    .priority-row.is-open {
+      max-height: 60px;
+      opacity: 1;
+      margin-top: 0.5rem;
+    }
+
     /* ── Quest log items ── */
     .quest-item {
       background: var(--wood-dark);
@@ -350,13 +377,34 @@
       border-left-width: 4px;
       box-shadow: inset 1px 1px 0 rgba(196,154,47,0.12), 1px 2px 0 rgba(0,0,0,0.35);
       border-radius: 3px;
-      transition: background 0.15s;
+      transition: background 0.15s, opacity 0.3s, transform 0.3s;
+      animation: quest-in 0.25s ease-out both;
     }
     .quest-item:hover { background: #251408; }
     .quest-item.p-head   { border-left-color: var(--green-mid); }
     .quest-item.p-urgent { border-left-color: var(--red-warm); }
     .quest-item.p-high   { border-left-color: var(--amber); }
     .quest-item.p-normal { border-left-color: var(--border-dark); }
+    .quest-item.is-done {
+      opacity: 0;
+      transform: translateX(20px);
+      transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+    }
+
+    /* Stagger animation for quest items */
+    @keyframes quest-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .quest-item:nth-child(1) { animation-delay: 0ms; }
+    .quest-item:nth-child(2) { animation-delay: 40ms; }
+    .quest-item:nth-child(3) { animation-delay: 80ms; }
+    .quest-item:nth-child(4) { animation-delay: 120ms; }
+    .quest-item:nth-child(5) { animation-delay: 160ms; }
+    .quest-item:nth-child(6) { animation-delay: 200ms; }
+    .quest-item:nth-child(7) { animation-delay: 240ms; }
+    .quest-item:nth-child(8) { animation-delay: 280ms; }
+    .quest-item:nth-child(n+9) { animation-delay: 300ms; }
 
     /* ── Section labels ── */
     .section-label {
@@ -377,6 +425,13 @@
         inset -2px -2px 0 #2a1406,
         3px 4px 0 rgba(0,0,0,0.6);
       border-radius: 4px;
+      transform: translateY(1rem);
+      opacity: 0;
+      transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+    }
+    .toast-box.is-visible {
+      opacity: 1;
+      transform: translateY(0);
     }
 
     /* ── Ghost / minor buttons ── */
@@ -475,11 +530,11 @@
       border-radius: 2px;
     }
 
-    /* ── Done button (quest items) ── */
+    /* ── Done button (quest items) — enlarged for mobile ── */
     .btn-done {
-      width: 22px;
-      height: 22px;
-      border-radius: 3px;
+      width: 36px;
+      height: 36px;
+      border-radius: 4px;
       border: 2px solid var(--border-dark);
       background: transparent;
       cursor: pointer;
@@ -493,10 +548,34 @@
     .btn-done:hover {
       border-color: var(--green-mid);
       background: rgba(126,200,80,0.1);
+      box-shadow: 0 0 8px rgba(126,200,80,0.2);
     }
     .btn-done:active {
       background: var(--green-dark);
       border-color: var(--green-bright);
+      transform: scale(0.9);
+    }
+
+    /* ── Action panel slide ── */
+    .panel-wrap {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
+    }
+    .panel-wrap.is-open {
+      max-height: 600px;
+      opacity: 1;
+    }
+
+    /* ── Reduced motion ── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      :root { --anim-speed: 0; }
     }
   </style>
 </head>
@@ -592,9 +671,9 @@
   class="toast-box fixed left-4 right-4 max-w-sm mx-auto px-5 py-4"
   role="status"
   aria-live="polite"
-  style="display:none; z-index:9999; bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem)); transition: opacity 0.2s ease-out, transform 0.2s ease-out;">
+  style="display:none; z-index:9999; bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem));">
   <div class="flex items-start gap-3">
-    <span class="text-lg shrink-0 leading-none mt-0.5">&#10022;</span>
+    <span class="text-lg shrink-0 leading-none" style="margin-top:2px">&#10022;</span>
     <span id="toast-text" class="vt-font text-xl leading-snug" style="color:var(--parchment)"></span>
   </div>
 </div>
@@ -602,19 +681,19 @@
 <script>
 // ── Generate twinkling stars ──
 (function () {
-  const c = document.getElementById('stars');
-  for (let i = 0; i < 90; i++) {
-    const s  = document.createElement('div');
+  var c = document.getElementById('stars');
+  for (var i = 0; i < 90; i++) {
+    var s  = document.createElement('div');
     s.className = 'star';
-    const sz = Math.random() * 2.5 + 0.5;
+    var sz = Math.random() * 2.5 + 0.5;
     s.style.cssText = [
-      `width:${sz}px`, `height:${sz}px`,
-      `top:${(Math.random() * 65).toFixed(1)}%`,
-      `left:${(Math.random() * 100).toFixed(1)}%`,
-      `--dur:${(Math.random() * 4 + 2).toFixed(1)}s`,
-      `--delay:-${(Math.random() * 4).toFixed(1)}s`,
-      `--min-op:${(Math.random() * 0.2 + 0.04).toFixed(2)}`,
-      `--max-op:${(Math.random() * 0.5 + 0.4).toFixed(2)}`,
+      'width:' + sz + 'px', 'height:' + sz + 'px',
+      'top:' + (Math.random() * 65).toFixed(1) + '%',
+      'left:' + (Math.random() * 100).toFixed(1) + '%',
+      '--dur:' + (Math.random() * 4 + 2).toFixed(1) + 's',
+      '--delay:-' + (Math.random() * 4).toFixed(1) + 's',
+      '--min-op:' + (Math.random() * 0.2 + 0.04).toFixed(2),
+      '--max-op:' + (Math.random() * 0.5 + 0.4).toFixed(2),
     ].join(';');
     c.appendChild(s);
   }
@@ -640,22 +719,17 @@ var Burrow = (function() {
     if (!box || !text) return;
     text.textContent = msg;
     box.style.display = 'block';
-    // Force reflow so transition fires
+    // Force reflow then add class for CSS transition
     box.offsetHeight;
-    box.style.opacity = '1';
-    box.style.transform = 'translateY(0)';
+    box.classList.add('is-visible');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function() {
-      box.style.opacity = '0';
-      box.style.transform = 'translateY(0.5rem)';
-      setTimeout(function() { box.style.display = 'none'; }, 200);
+      box.classList.remove('is-visible');
+      setTimeout(function() { box.style.display = 'none'; }, 300);
     }, 4500);
   }
 
   // Wrapper for fetch that handles CF Access redirects gracefully.
-  // CF Access may return a 302 → login page HTML when the session
-  // expires. fetch() follows the redirect, gets HTML, and res.json()
-  // throws. This wrapper detects non-JSON responses.
   function apiFetch(url, opts) {
     opts.credentials = 'same-origin';
     return fetch(url, opts).then(function(res) {
@@ -674,6 +748,42 @@ var Burrow = (function() {
       if (!el) return;
       el.className = 'priority-pill' + (v === p ? ' p-' + v : '');
     });
+    // Update toggle button appearance
+    var toggle = document.getElementById('priority-toggle');
+    if (toggle) {
+      if (p !== 'normal') {
+        toggle.classList.add('has-priority');
+        toggle.querySelector('.toggle-label').textContent = p.charAt(0).toUpperCase() + p.slice(1);
+      } else {
+        toggle.classList.remove('has-priority');
+        toggle.querySelector('.toggle-label').textContent = 'Priority';
+      }
+    }
+  }
+
+  function togglePriority() {
+    var row = document.getElementById('priority-row');
+    var toggle = document.getElementById('priority-toggle');
+    if (!row || !toggle) return;
+    var open = row.classList.contains('is-open');
+    if (open) {
+      row.classList.remove('is-open');
+      toggle.classList.remove('is-open');
+    } else {
+      row.classList.add('is-open');
+      toggle.classList.add('is-open');
+    }
+  }
+
+  function setDomain(el, value) {
+    var pills = document.querySelectorAll('.domain-pill');
+    for (var i = 0; i < pills.length; i++) {
+      pills[i].classList.remove('active');
+    }
+    el.classList.add('active');
+    // Store in hidden input
+    var hidden = document.getElementById('task-domain');
+    if (hidden) hidden.value = value;
   }
 
   function togglePanel(actionId) {
@@ -681,8 +791,8 @@ var Burrow = (function() {
     if (openPanel) {
       var oldWrap = document.getElementById('wrap-' + openPanel);
       var oldBtn  = document.getElementById('btn-' + openPanel);
-      if (oldWrap) oldWrap.style.display = 'none';
-      if (oldBtn)  oldBtn.className = oldBtn.className.replace(' active', '');
+      if (oldWrap) oldWrap.classList.remove('is-open');
+      if (oldBtn)  oldBtn.classList.remove('active');
     }
     if (openPanel === actionId) {
       openPanel = null;
@@ -691,8 +801,12 @@ var Burrow = (function() {
     openPanel = actionId;
     var wrap = document.getElementById('wrap-' + actionId);
     var btn  = document.getElementById('btn-' + actionId);
-    if (wrap) wrap.style.display = 'block';
-    if (btn && btn.className.indexOf('active') === -1) btn.className += ' active';
+    if (wrap) {
+      // Force reflow then open
+      wrap.offsetHeight;
+      wrap.classList.add('is-open');
+    }
+    if (btn && !btn.classList.contains('active')) btn.classList.add('active');
     // Load panel content via HTMX
     htmx.ajax('GET',
       '/api/action-panel/' + actionId + '?user=' + encodeURIComponent(user),
@@ -704,8 +818,8 @@ var Burrow = (function() {
     if (openPanel) {
       var wrap = document.getElementById('wrap-' + openPanel);
       var btn  = document.getElementById('btn-' + openPanel);
-      if (wrap) wrap.style.display = 'none';
-      if (btn)  btn.className = btn.className.replace(' active', '');
+      if (wrap) wrap.classList.remove('is-open');
+      if (btn)  btn.classList.remove('active');
       openPanel = null;
     }
   }
@@ -714,12 +828,11 @@ var Burrow = (function() {
   function panelSelect(el, hiddenId, value) {
     var hidden = document.getElementById(hiddenId);
     if (hidden) hidden.value = value;
-    // Toggle active class on sibling buttons
     var siblings = el.parentElement.querySelectorAll('button');
     for (var i = 0; i < siblings.length; i++) {
-      siblings[i].className = siblings[i].className.replace(' active', '');
+      siblings[i].classList.remove('active');
     }
-    el.className += ' active';
+    el.classList.add('active');
   }
 
   function fireCoffee() {
@@ -730,24 +843,34 @@ var Burrow = (function() {
     fireAction('coffee', { size: size, drink: drink, notes: notes, remember: remember });
   }
 
+  function _setBtnLoading(btn, loading) {
+    if (!btn) return;
+    if (loading) {
+      btn.dataset.origText = btn.textContent;
+      btn.textContent = 'Sending\u2026';
+      btn.disabled = true;
+      btn.classList.add('is-loading');
+    } else {
+      btn.textContent = btn.dataset.origText || 'Queue it';
+      btn.disabled = false;
+      btn.classList.remove('is-loading');
+    }
+  }
+
   function submitTask() {
-    if (window._dbg) window._dbg('submitTask: start');
     var bodyEl   = document.getElementById('task-body');
     var domainEl = document.getElementById('task-domain');
     var btnEl    = document.getElementById('btn-submit');
-    if (window._dbg) window._dbg('submitTask: bodyEl=' + !!bodyEl + ' val="' + (bodyEl ? bodyEl.value : 'null') + '"');
     var body = (bodyEl ? bodyEl.value : '').trim();
-    if (!body) { showToast('Type something first'); if (window._dbg) window._dbg('submitTask: EMPTY body, bailed'); return; }
-    if (!lock('submit')) { if (window._dbg) window._dbg('submitTask: LOCKED, bailed'); return; }
-    if (window._dbg) window._dbg('submitTask: locked OK, calling fetch');
-    if (btnEl) { btnEl.textContent = 'Sending\u2026'; btnEl.disabled = true; }
+    if (!body) { showToast('Type something first'); return; }
+    if (!lock('submit')) return;
+    _setBtnLoading(btnEl, true);
 
     var prefix    = priority === 'urgent' ? '!! '
                   : priority === 'high'   ? '! ' : '';
     var domPrefix = domainEl && domainEl.value ? domainEl.value + ': ' : '';
 
     var payload = { body: prefix + domPrefix + body, user: user };
-    if (window._dbg) window._dbg('submitTask: payload=' + JSON.stringify(payload));
 
     apiFetch('/api/task', {
       method:  'POST',
@@ -755,30 +878,41 @@ var Burrow = (function() {
       body:    JSON.stringify(payload),
     })
     .then(function(data) {
-      if (window._dbg) window._dbg('submitTask: response=' + JSON.stringify(data));
       if (data.ticket_id) {
         showToast('\u2605 Added: ' + data.enhanced);
         if (bodyEl) bodyEl.value = '';
+        // Reset domain pills
+        var pills = document.querySelectorAll('.domain-pill');
+        for (var i = 0; i < pills.length; i++) pills[i].classList.remove('active');
+        if (pills[0]) pills[0].classList.add('active');
         if (domainEl) domainEl.value = '';
         setPriority('normal');
+        // Collapse priority if open
+        var row = document.getElementById('priority-row');
+        var toggle = document.getElementById('priority-toggle');
+        if (row) row.classList.remove('is-open');
+        if (toggle) toggle.classList.remove('is-open');
         htmx.trigger('#queue-list', 'refresh');
       } else {
         showToast('\u2717 ' + (data.error || 'something went wrong'));
       }
     })
     .catch(function(e) {
-      if (window._dbg) window._dbg('submitTask: CATCH err=' + e.message);
       showToast('\u2717 ' + (e.message || 'Network error'));
     })
     .finally(function() {
-      if (window._dbg) window._dbg('submitTask: finally, unlocking');
       unlock('submit');
-      if (btnEl) { btnEl.textContent = 'Queue it'; btnEl.disabled = false; }
+      _setBtnLoading(btnEl, false);
     });
   }
 
   function fireAction(actionId, payload) {
     if (!lock('action')) return;
+    // Find the submit button inside the open panel
+    var panel = document.getElementById('panel-' + actionId);
+    var btn = panel ? panel.querySelector('.btn-primary') : null;
+    _setBtnLoading(btn, true);
+
     var p = {};
     for (var k in payload) p[k] = payload[k];
     p.action_id = actionId;
@@ -801,11 +935,19 @@ var Burrow = (function() {
       }
     })
     .catch(function(e) { showToast('\u2717 ' + (e.message || 'Network error')); })
-    .finally(function() { unlock('action'); });
+    .finally(function() {
+      unlock('action');
+      _setBtnLoading(btn, false);
+    });
   }
 
   function completeTask(ticketId) {
     if (!lock('done-' + ticketId)) return;
+    // Find the quest item and animate it out
+    var doneBtn = document.querySelector('[onclick*="' + ticketId + '"]');
+    var questItem = doneBtn ? doneBtn.closest('.quest-item') : null;
+    if (questItem) questItem.classList.add('is-done');
+
     apiFetch('/api/task/' + ticketId + '/done', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -813,61 +955,51 @@ var Burrow = (function() {
     .then(function(data) {
       if (data.ok) {
         showToast('\u2714 Quest complete!');
-        htmx.trigger('#queue-list', 'refresh');
+        // Delay refresh so animation plays
+        setTimeout(function() {
+          htmx.trigger('#queue-list', 'refresh');
+        }, 300);
       } else {
         showToast('\u2717 ' + (data.error || 'something went wrong'));
+        if (questItem) questItem.classList.remove('is-done');
       }
     })
-    .catch(function(e) { showToast('\u2717 ' + (e.message || 'Network error')); })
+    .catch(function(e) {
+      showToast('\u2717 ' + (e.message || 'Network error'));
+      if (questItem) questItem.classList.remove('is-done');
+    })
     .finally(function() { unlock('done-' + ticketId); });
   }
 
   return {
-    showToast:   showToast,
-    setPriority: setPriority,
-    togglePanel: togglePanel,
-    closePanel:  closePanel,
-    panelSelect: panelSelect,
-    fireCoffee:  fireCoffee,
-    submitTask:  submitTask,
-    fireAction:  fireAction,
-    completeTask: completeTask,
+    showToast:      showToast,
+    setPriority:    setPriority,
+    togglePriority: togglePriority,
+    setDomain:      setDomain,
+    togglePanel:    togglePanel,
+    closePanel:     closePanel,
+    panelSelect:    panelSelect,
+    fireCoffee:     fireCoffee,
+    submitTask:     submitTask,
+    fireAction:     fireAction,
+    completeTask:   completeTask,
   };
 })();
 
-// ── Diagnostic bar (temporary — remove after mobile is confirmed working) ──
+// ── Time-aware greeting ──
 (function() {
-  var bar = document.createElement('div');
-  bar.id = 'debug-bar';
-  bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#111;color:#0f0;font:11px/1.4 monospace;padding:4px 8px;max-height:30vh;overflow-y:auto;opacity:0.92;';
-  document.body.appendChild(bar);
-
-  var checks = [];
-  checks.push('htmx: ' + (typeof htmx !== 'undefined' ? 'OK' : 'MISSING'));
-  checks.push('Burrow: ' + (typeof Burrow !== 'undefined' ? 'OK' : 'MISSING'));
-  checks.push('user: ' + (window._cfUser || 'null'));
-  checks.push('sw: ' + ('serviceWorker' in navigator ? 'yes' : 'no'));
-  bar.textContent = checks.join(' | ');
-
-  window._dbg = function(msg) {
-    var t = new Date().toLocaleTimeString();
-    bar.textContent = '[' + t + '] ' + msg + '\n' + bar.textContent;
-  };
-
-  // Wrap every Burrow method with error logging
-  var orig = {};
-  ['submitTask','fireAction','fireCoffee','completeTask','togglePanel','setPriority','panelSelect','closePanel'].forEach(function(name) {
-    orig[name] = Burrow[name];
-    Burrow[name] = function() {
-      window._dbg(name + '(' + Array.prototype.slice.call(arguments).join(',') + ')');
-      try {
-        return orig[name].apply(null, arguments);
-      } catch(e) {
-        window._dbg('ERROR in ' + name + ': ' + e.message);
-        Burrow.showToast('JS Error: ' + e.message);
-      }
-    };
-  });
+  var el = document.getElementById('greeting');
+  if (!el) return;
+  var h = new Date().getHours();
+  var period = h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening';
+  var user = window._cfUser || '';
+  if (user === 'John') {
+    el.textContent = '\u2726 ' + period + ', John.';
+  } else if (user === 'Jeannie') {
+    el.textContent = '\u2726 Hey Jeannie!';
+  } else {
+    el.textContent = '\u2726 Welcome.';
+  }
 })();
 
 if ('serviceWorker' in navigator) {
@@ -877,18 +1009,8 @@ if ('serviceWorker' in navigator) {
     _swRefreshing = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register('/sw.js').catch(function(e) {
-    if (window._dbg) window._dbg('SW reg failed: ' + e.message);
-  });
+  navigator.serviceWorker.register('/sw.js').catch(function() {});
 }
-
-// Catch ALL unhandled errors and show them
-window.addEventListener('error', function(e) {
-  if (window._dbg) window._dbg('GLOBAL ERR: ' + e.message + ' @ ' + e.filename + ':' + e.lineno);
-});
-window.addEventListener('unhandledrejection', function(e) {
-  if (window._dbg) window._dbg('PROMISE ERR: ' + (e.reason ? e.reason.message || e.reason : 'unknown'));
-});
 </script>
 </body>
 </html>

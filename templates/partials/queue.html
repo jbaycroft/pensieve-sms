@@ -1,13 +1,13 @@
 {% if tickets %}
   {% for t in tickets %}
-  <div class="quest-item flex items-start gap-3 px-4 py-3 mb-2
+  <div class="quest-item flex items-center gap-3 px-4 py-3 mb-2
     {%- if loop.first %} p-head
     {%- elif t.priority in ('critical','urgent') %} p-urgent
     {%- elif t.priority == 'high' %} p-high
     {%- else %} p-normal{%- endif %}">
 
     <!-- Priority indicator -->
-    <div class="shrink-0 w-6 text-center" style="padding-top:2px">
+    <div class="shrink-0 w-6 text-center">
       {% if loop.first %}
         <span class="vt-font text-2xl" style="color:var(--green-bright)">★</span>
       {% elif t.priority in ('critical','urgent') %}
@@ -21,7 +21,7 @@
 
     <!-- Task body -->
     <div class="flex-1 min-w-0">
-      <div class="text-body" style="margin-bottom:4px">
+      <div class="text-body" style="margin-bottom:3px">
         {{ t.title }}
       </div>
       <div class="flex items-center gap-2 flex-wrap">
@@ -45,19 +45,18 @@
              border:1px solid rgba(126,200,80,0.3);
              color:var(--green-bright);
              padding:2px 8px; border-radius:2px;
-             white-space:nowrap; align-self:center">
+             white-space:nowrap">
       HEAD
     </span>
     {% endif %}
 
-    <!-- Done button -->
+    <!-- Done button — 36px for mobile tap targets -->
     <button class="btn-done"
       onclick="Burrow.completeTask('{{ t.id }}')"
       aria-label="Mark task done"
-      title="Mark done"
-      style="align-self:center">
-      <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="var(--text-dim)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M2 6l3 3 5-6"/>
+      title="Mark done">
+      <svg viewBox="0 0 14 14" width="16" height="16" fill="none" stroke="var(--text-dim)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 7l4 4 6-7"/>
       </svg>
     </button>
   </div>

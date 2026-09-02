@@ -1,7 +1,7 @@
 {% if action.type == 'coffee' %}
 {# ── Coffee order panel ── #}
 <div id="coffee-panel-inner">
-  <div class="flex items-center justify-between mb-5">
+  <div class="flex items-center justify-between mb-4">
     <div>
       <div class="section-label" style="letter-spacing:0.08em; color:var(--amber)">
         ☕ Coffee Order
@@ -14,7 +14,7 @@
   </div>
 
   <!-- Size -->
-  <div class="mb-4">
+  <div class="mb-3">
     <div class="section-label mb-2">Size</div>
     <div class="grid grid-cols-3 gap-2">
       {% for s in ['small','medium','large'] %}
@@ -26,7 +26,7 @@
   </div>
 
   <!-- Drink type -->
-  <div class="mb-4">
+  <div class="mb-3">
     <div class="section-label mb-2">Drink</div>
     <div class="flex flex-wrap gap-2">
       {% for d in ['drip','espresso','latte','cappuccino','americano','cold brew'] %}
@@ -38,7 +38,7 @@
   </div>
 
   <!-- Notes -->
-  <div class="mb-5">
+  <div class="mb-4">
     <div class="section-label mb-2">Notes</div>
     <input type="text" id="coffee-notes"
       value="{{ prefs.notes | replace('\"', '&quot;') }}"
@@ -65,13 +65,13 @@
 {% elif action.type == 'prefilled' %}
 {# ── One-tap prefilled action ── #}
 <div>
-  <div class="flex items-center justify-between mb-4">
+  <div class="flex items-center justify-between mb-3">
     <div class="text-panel-title">
       {{ action.icon }} {{ action.label }}
     </div>
     <button onclick="Burrow.closePanel()" class="btn-ghost" style="font-size:0.8rem">✕ close</button>
   </div>
-  <p class="vt-font text-xl mb-5" style="color:var(--parchment-dk)">{{ action.task }}</p>
+  <p class="vt-font text-xl mb-4" style="color:var(--parchment-dk)">{{ action.task }}</p>
   <button onclick="Burrow.fireAction('{{ action.id }}', {})" class="btn-primary w-full">
     Queue it
   </button>
@@ -80,7 +80,7 @@
 {% else %}
 {# ── Freeform action ── #}
 <div>
-  <div class="flex items-center justify-between mb-4">
+  <div class="flex items-center justify-between mb-3">
     <div class="text-panel-title">
       {{ action.icon }} {{ action.label }}
     </div>
