@@ -94,7 +94,7 @@ def action_panel(action_id: str):
     prefs = get_prefs(user, action_id) if action.get("type") == "coffee" else {}
     # Ensure coffee prefs have defaults
     if action.get("type") == "coffee":
-        prefs = {"size": "medium", "drink": "drip", "notes": "", **prefs}
+        prefs = {"type": "hot", "quality": "cheap", "drink": "drip", "notes": "", **prefs}
     return render_template("partials/action_panel.html", action=action, user=user, prefs=prefs)
 
 
@@ -150,12 +150,16 @@ def quick_action():
 
     try:
         if action["type"] == "coffee":
-            size  = data.get("size", "medium")
-            drink = data.get("drink", "drip")
-            notes = data.get("notes", "")
+            ctype   = data.get("type", "hot")
+            quality = data.get("quality", "cheap")
+            drink   = data.get("drink", "drip")
+            notes   = data.get("notes", "")
             if data.get("remember"):
-                save_prefs(user, action_id, {"size": size, "drink": drink, "notes": notes})
-            title = f"{user}'s {size} {drink}" + (f" — {notes}" if notes else "")
+                save_prefs(user, action_id, {"type": ctype, "quality": quality, "drink": drink, "notes": notes})
+            parts = [f"{user}'s", ctype, quality, drink]
+            title = " ".join(p for p in parts if p)
+            if notes:
+                title += f" — {notes}"
             tid, ack = _write(title, "connection", priority, 5)
             return jsonify({"ack": ack, "ticket_id": tid, "enhanced": title})
 

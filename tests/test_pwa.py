@@ -141,12 +141,13 @@ def test_coffee_panel_returns_200(client):
     assert r.status_code == 200
 
 
-def test_coffee_panel_contains_size_options(client):
+def test_coffee_panel_contains_type_and_quality_options(client):
     r = client.get("/api/action-panel/coffee?user=John")
     html = r.data
-    assert b"small" in html
-    assert b"medium" in html
-    assert b"large" in html
+    assert b"iced" in html
+    assert b"hot" in html
+    assert b"blue bottle" in html
+    assert b"cheap" in html
 
 
 def test_coffee_panel_contains_drink_options(client):
@@ -165,7 +166,7 @@ def test_coffee_panel_contains_remember_checkbox(client):
 def test_coffee_panel_prefills_saved_preferences(client, vault_dir, monkeypatch):
     monkeypatch.setenv("VAULT_ROOT", str(vault_dir))
     from app.preferences import save_prefs
-    save_prefs("Jeannie", "coffee", {"size": "medium", "drink": "latte", "notes": "oat milk"})
+    save_prefs("Jeannie", "coffee", {"type": "hot", "quality": "blue bottle", "drink": "latte", "notes": "oat milk"})
     r = client.get("/api/action-panel/coffee?user=Jeannie")
     html = r.data.decode()
     assert "oat milk" in html
@@ -265,21 +266,23 @@ def test_coffee_quick_action(client, vault_dir):
     r = client.post("/api/quick-action",
                     data=json.dumps({
                         "action_id": "coffee", "user": "John",
-                        "size": "large", "drink": "drip", "notes": "black",
+                        "type": "iced", "quality": "blue bottle",
+                        "drink": "drip", "notes": "black",
                         "remember": False,
                     }),
                     content_type="application/json")
     assert r.status_code == 200
     data = r.get_json()
     assert "ticket_id" in data
-    assert "large" in data["enhanced"] or "drip" in data["enhanced"]
+    assert "iced" in data["enhanced"] or "drip" in data["enhanced"]
 
 
 def test_coffee_quick_action_creates_connection_ticket(client, vault_dir):
     r = client.post("/api/quick-action",
                     data=json.dumps({
                         "action_id": "coffee", "user": "Jeannie",
-                        "size": "medium", "drink": "latte", "notes": "oat milk",
+                        "type": "hot", "quality": "cheap",
+                        "drink": "latte", "notes": "oat milk",
                         "remember": False,
                     }),
                     content_type="application/json")
@@ -294,13 +297,15 @@ def test_coffee_remember_saves_preferences(client, vault_dir, monkeypatch):
     client.post("/api/quick-action",
                 data=json.dumps({
                     "action_id": "coffee", "user": "Jeannie",
-                    "size": "medium", "drink": "latte", "notes": "oat milk",
+                    "type": "iced", "quality": "blue bottle",
+                    "drink": "latte", "notes": "oat milk",
                     "remember": True,
                 }),
                 content_type="application/json")
     from app.preferences import get_prefs
     saved = get_prefs("Jeannie", "coffee")
-    assert saved["size"] == "medium"
+    assert saved["type"] == "iced"
+    assert saved["quality"] == "blue bottle"
     assert saved["drink"] == "latte"
     assert saved["notes"] == "oat milk"
 
@@ -310,7 +315,8 @@ def test_coffee_no_remember_does_not_save(client, vault_dir, monkeypatch):
     client.post("/api/quick-action",
                 data=json.dumps({
                     "action_id": "coffee", "user": "John",
-                    "size": "small", "drink": "americano",
+                    "type": "hot", "quality": "cheap",
+                    "drink": "americano",
                     "remember": False,
                 }),
                 content_type="application/json")

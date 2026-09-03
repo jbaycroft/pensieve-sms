@@ -747,7 +747,8 @@ var Burrow = (function() {
 
   function fireCoffee() {
     fireAction('coffee', {
-      size: (document.getElementById('coffee-size') || {}).value || 'medium',
+      type: (document.getElementById('coffee-type') || {}).value || 'hot',
+      quality: (document.getElementById('coffee-quality') || {}).value || 'cheap',
       drink: (document.getElementById('coffee-drink') || {}).value || 'drip',
       notes: (document.getElementById('coffee-notes') || {}).value || '',
       remember: (document.getElementById('coffee-remember') || {}).checked

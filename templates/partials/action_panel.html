@@ -7,17 +7,33 @@
     <button onclick="Burrow.closePanel()" class="panel-close">✕</button>
   </div>
 
-  <div style="margin-bottom:0.75rem">
-    <div class="panel-label">Size</div>
-    <div class="sel-grid">
-      {% for s in ['small','medium','large'] %}
-      <button onclick="Burrow.panelSelect(this,'coffee-size','{{ s }}')"
-        class="sel-btn{% if prefs.size == s %} active{% endif %}"
-        data-value="{{ s }}">{{ s }}</button>
-      {% endfor %}
+  <!-- Type + Quality side by side -->
+  <div style="display:flex; gap:0.75rem; margin-bottom:0.75rem">
+    <div style="flex:1">
+      <div class="panel-label">Type</div>
+      <div style="display:flex; gap:0.4rem">
+        {% for t in ['iced','hot'] %}
+        <button onclick="Burrow.panelSelect(this,'coffee-type','{{ t }}')"
+          class="sel-btn{% if prefs.type == t %} active{% endif %}"
+          style="flex:1"
+          data-value="{{ t }}">{{ t }}</button>
+        {% endfor %}
+      </div>
+    </div>
+    <div style="flex:1">
+      <div class="panel-label">Quality</div>
+      <div style="display:flex; gap:0.4rem">
+        {% for q in ['blue bottle','cheap'] %}
+        <button onclick="Burrow.panelSelect(this,'coffee-quality','{{ q }}')"
+          class="sel-btn{% if prefs.quality == q %} active{% endif %}"
+          style="flex:1"
+          data-value="{{ q }}">{{ q }}</button>
+        {% endfor %}
+      </div>
     </div>
   </div>
 
+  <!-- Drink -->
   <div style="margin-bottom:0.75rem">
     <div class="panel-label">Drink</div>
     <div class="sel-wrap">
@@ -29,6 +45,7 @@
     </div>
   </div>
 
+  <!-- Notes -->
   <div style="margin-bottom:1rem">
     <div class="panel-label">Notes</div>
     <input type="text" id="coffee-notes"
@@ -39,6 +56,7 @@
       class="panel-input">
   </div>
 
+  <!-- Footer -->
   <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem">
     <label style="display:flex; align-items:center; gap:6px; cursor:pointer">
       <input type="checkbox" id="coffee-remember" checked>
@@ -47,7 +65,9 @@
     <button onclick="Burrow.fireCoffee()" class="panel-submit" style="width:auto; padding:0 28px">Queue it</button>
   </div>
 
-  <input type="hidden" id="coffee-size" value="{{ prefs.size }}">
+  <!-- Hidden state -->
+  <input type="hidden" id="coffee-type" value="{{ prefs.type }}">
+  <input type="hidden" id="coffee-quality" value="{{ prefs.quality }}">
   <input type="hidden" id="coffee-drink" value="{{ prefs.drink }}">
 </div>
 
