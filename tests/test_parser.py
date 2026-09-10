@@ -4,7 +4,7 @@ from app.parser import parse
 
 def test_plain_text():
     r = parse("buy CO2 sensor")
-    assert r.priority == "normal"
+    assert r.priority == "month"
     assert r.est_min == 30
     assert r.domain is None
     assert r.raw_text == "buy CO2 sensor"
@@ -12,13 +12,13 @@ def test_plain_text():
 
 def test_urgent_prefix():
     r = parse("!! deploy hotfix")
-    assert r.priority == "urgent"
+    assert r.priority == "day"
     assert r.raw_text == "deploy hotfix"
 
 
 def test_high_prefix():
     r = parse("! pick up dog food")
-    assert r.priority == "high"
+    assert r.priority == "week"
     assert r.raw_text == "pick up dog food"
 
 
@@ -41,7 +41,7 @@ def test_domain_prefix_long():
 
 def test_combined_all_prefixes():
     r = parse("!! 10: w: fix staging env vars")
-    assert r.priority == "urgent"
+    assert r.priority == "day"
     assert r.est_min == 10
     assert r.domain == "work"
     assert r.raw_text == "fix staging env vars"
@@ -61,7 +61,7 @@ def test_min_est_min_clamped():
 
 def test_whitespace_trimmed():
     r = parse("  !!  5:  w:  deploy   ")
-    assert r.priority == "urgent"
+    assert r.priority == "day"
     assert r.est_min == 5
     assert r.domain == "work"
     assert r.raw_text == "deploy"

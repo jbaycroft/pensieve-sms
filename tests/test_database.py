@@ -50,33 +50,33 @@ def test_init_db_is_idempotent(vault):
 # ── create_ticket ─────────────────────────────────────────────────────────────
 
 def test_create_ticket_inserts_row(vault):
-    db.create_ticket("TKT-001", "Buy CO2 sensor", "hydroponics", "normal")
+    db.create_ticket("TKT-001", "Buy CO2 sensor", "hydroponics", "month")
     row = db.get_conn().execute(
         "SELECT * FROM tickets WHERE id='TKT-001'"
     ).fetchone()
     assert row is not None
     assert row["title"] == "Buy CO2 sensor"
     assert row["domain"] == "hydroponics"
-    assert row["priority"] == "normal"
+    assert row["priority"] == "month"
     assert row["status"] == "queued"
     assert row["source"] == "sms"
 
 
 def test_create_ticket_default_est_min(vault):
-    db.create_ticket("TKT-002", "Task", "work", "normal")
+    db.create_ticket("TKT-002", "Task", "work", "month")
     row = db.get_conn().execute("SELECT est_min FROM tickets WHERE id='TKT-002'").fetchone()
     assert row["est_min"] == 30
 
 
 def test_create_ticket_custom_est_min(vault):
-    db.create_ticket("TKT-003", "Task", "work", "normal", est_min=15)
+    db.create_ticket("TKT-003", "Task", "work", "month", est_min=15)
     row = db.get_conn().execute("SELECT est_min FROM tickets WHERE id='TKT-003'").fetchone()
     assert row["est_min"] == 15
 
 
 def test_create_ticket_ignore_duplicate(vault):
-    db.create_ticket("TKT-DUP", "First", "work", "normal")
-    db.create_ticket("TKT-DUP", "Second", "work", "normal")  # should not raise
+    db.create_ticket("TKT-DUP", "First", "work", "month")
+    db.create_ticket("TKT-DUP", "Second", "work", "month")  # should not raise
     count = db.get_conn().execute(
         "SELECT COUNT(*) FROM tickets WHERE id='TKT-DUP'"
     ).fetchone()[0]
@@ -84,7 +84,7 @@ def test_create_ticket_ignore_duplicate(vault):
 
 
 def test_create_ticket_logs_audit(vault):
-    db.create_ticket("TKT-AUDIT", "Audited task", "work", "normal")
+    db.create_ticket("TKT-AUDIT", "Audited task", "work", "month")
     logs = db.get_audit_log("TKT-AUDIT")
     assert len(logs) >= 1
     assert logs[0]["action"] == "create_ticket"
@@ -95,34 +95,34 @@ def test_create_ticket_logs_audit(vault):
 
 def test_enqueue_normal_appends_to_tail(vault):
     for i in range(3):
-        db.create_ticket(f"TKT-N{i}", f"Task {i}", "work", "normal")
-        db.enqueue_ticket(f"TKT-N{i}", "normal")
+        db.create_ticket(f"TKT-N{i}", f"Task {i}", "work", "month")
+        db.enqueue_ticket(f"TKT-N{i}", "month")
     queue = db.get_queue()
     assert [t["id"] for t in queue] == ["TKT-N0", "TKT-N1", "TKT-N2"]
 
 
-def test_enqueue_urgent_becomes_head(vault):
-    db.create_ticket("TKT-A", "Normal A", "work", "normal")
-    db.enqueue_ticket("TKT-A", "normal")
-    db.create_ticket("TKT-B", "Normal B", "work", "normal")
-    db.enqueue_ticket("TKT-B", "normal")
+def test_enqueue_day_becomes_head(vault):
+    db.create_ticket("TKT-A", "Normal A", "work", "month")
+    db.enqueue_ticket("TKT-A", "month")
+    db.create_ticket("TKT-B", "Normal B", "work", "month")
+    db.enqueue_ticket("TKT-B", "month")
 
-    db.create_ticket("TKT-URG", "Urgent", "work", "urgent")
-    db.enqueue_ticket("TKT-URG", "urgent")
+    db.create_ticket("TKT-URG", "Day", "work", "day")
+    db.enqueue_ticket("TKT-URG", "day")
 
     queue = db.get_queue()
     assert queue[0]["id"] == "TKT-URG"
     assert len(queue) == 3
 
 
-def test_enqueue_high_inserts_at_position_2(vault):
-    db.create_ticket("TKT-A", "Normal A", "work", "normal")
-    db.enqueue_ticket("TKT-A", "normal")
-    db.create_ticket("TKT-B", "Normal B", "work", "normal")
-    db.enqueue_ticket("TKT-B", "normal")
+def test_enqueue_week_inserts_at_position_2(vault):
+    db.create_ticket("TKT-A", "Normal A", "work", "month")
+    db.enqueue_ticket("TKT-A", "month")
+    db.create_ticket("TKT-B", "Normal B", "work", "month")
+    db.enqueue_ticket("TKT-B", "month")
 
-    db.create_ticket("TKT-HI", "High", "work", "high")
-    db.enqueue_ticket("TKT-HI", "high")
+    db.create_ticket("TKT-HI", "Week", "work", "week")
+    db.enqueue_ticket("TKT-HI", "week")
 
     queue = db.get_queue()
     assert queue[0]["id"] == "TKT-A"
@@ -130,22 +130,22 @@ def test_enqueue_high_inserts_at_position_2(vault):
     assert queue[2]["id"] == "TKT-B"
 
 
-def test_enqueue_high_with_empty_queue_goes_to_position_2(vault):
-    """High with no existing items: falls back to enqueuing at position 2 (same as 1 effectively)."""
-    db.create_ticket("TKT-HI", "High solo", "work", "high")
-    db.enqueue_ticket("TKT-HI", "high")
+def test_enqueue_week_with_empty_queue_goes_to_position_2(vault):
+    """Week with no existing items: falls back to enqueuing at position 2 (same as 1 effectively)."""
+    db.create_ticket("TKT-HI", "Week solo", "work", "week")
+    db.enqueue_ticket("TKT-HI", "week")
     queue = db.get_queue()
     assert queue[0]["id"] == "TKT-HI"
 
 
-def test_multiple_urgent_ordering(vault):
-    db.create_ticket("TKT-A", "First", "work", "urgent")
-    db.enqueue_ticket("TKT-A", "urgent")
-    db.create_ticket("TKT-B", "Second urgent", "work", "urgent")
-    db.enqueue_ticket("TKT-B", "urgent")
+def test_multiple_day_ordering(vault):
+    db.create_ticket("TKT-A", "First", "work", "day")
+    db.enqueue_ticket("TKT-A", "day")
+    db.create_ticket("TKT-B", "Second day", "work", "day")
+    db.enqueue_ticket("TKT-B", "day")
 
     queue = db.get_queue()
-    assert queue[0]["id"] == "TKT-B"  # most recent urgent is HEAD
+    assert queue[0]["id"] == "TKT-B"  # most recent day is HEAD
     assert queue[1]["id"] == "TKT-A"
 
 
@@ -156,30 +156,30 @@ def test_get_queue_empty(vault):
 
 
 def test_get_queue_returns_correct_fields(vault):
-    db.create_ticket("TKT-QQ", "Check pH", "hydroponics", "normal", est_min=15)
-    db.enqueue_ticket("TKT-QQ", "normal")
+    db.create_ticket("TKT-QQ", "Check pH", "hydroponics", "month", est_min=15)
+    db.enqueue_ticket("TKT-QQ", "month")
     queue = db.get_queue()
     assert len(queue) == 1
     t = queue[0]
     assert t["id"] == "TKT-QQ"
     assert t["title"] == "Check pH"
     assert t["domain"] == "hydroponics"
-    assert t["priority"] == "normal"
+    assert t["priority"] == "month"
     assert t["est_min"] == 15
     assert t["status"] == "queued"
 
 
 def test_get_queue_respects_limit(vault):
     for i in range(10):
-        db.create_ticket(f"TKT-L{i}", f"Task {i}", "work", "normal")
-        db.enqueue_ticket(f"TKT-L{i}", "normal")
+        db.create_ticket(f"TKT-L{i}", f"Task {i}", "work", "month")
+        db.enqueue_ticket(f"TKT-L{i}", "month")
     queue = db.get_queue(limit=5)
     assert len(queue) == 5
 
 
 def test_get_queue_excludes_done_tickets(vault):
-    db.create_ticket("TKT-DONE", "Done task", "work", "normal")
-    db.enqueue_ticket("TKT-DONE", "normal")
+    db.create_ticket("TKT-DONE", "Done task", "work", "month")
+    db.enqueue_ticket("TKT-DONE", "month")
     db.close_ticket("TKT-DONE")
     assert db.get_queue() == []
 
@@ -187,8 +187,8 @@ def test_get_queue_excludes_done_tickets(vault):
 # ── close_ticket ──────────────────────────────────────────────────────────────
 
 def test_close_ticket_sets_status_done(vault):
-    db.create_ticket("TKT-CLO", "Task", "work", "normal")
-    db.enqueue_ticket("TKT-CLO", "normal")
+    db.create_ticket("TKT-CLO", "Task", "work", "month")
+    db.enqueue_ticket("TKT-CLO", "month")
     db.close_ticket("TKT-CLO")
     row = db.get_conn().execute(
         "SELECT status, completed_at FROM tickets WHERE id='TKT-CLO'"
@@ -198,16 +198,16 @@ def test_close_ticket_sets_status_done(vault):
 
 
 def test_close_ticket_removes_from_queue(vault):
-    db.create_ticket("TKT-CLO2", "Task", "work", "normal")
-    db.enqueue_ticket("TKT-CLO2", "normal")
+    db.create_ticket("TKT-CLO2", "Task", "work", "month")
+    db.enqueue_ticket("TKT-CLO2", "month")
     db.close_ticket("TKT-CLO2")
     assert db.get_queue() == []
 
 
 def test_close_ticket_compacts_positions(vault):
     for i in range(3):
-        db.create_ticket(f"TKT-C{i}", f"Task {i}", "work", "normal")
-        db.enqueue_ticket(f"TKT-C{i}", "normal")
+        db.create_ticket(f"TKT-C{i}", f"Task {i}", "work", "month")
+        db.enqueue_ticket(f"TKT-C{i}", "month")
     db.close_ticket("TKT-C1")
     positions = [r[0] for r in db.get_conn().execute(
         "SELECT position FROM queue_order ORDER BY position"
@@ -216,8 +216,8 @@ def test_close_ticket_compacts_positions(vault):
 
 
 def test_close_ticket_logs_audit(vault):
-    db.create_ticket("TKT-CAUD", "Task", "work", "normal")
-    db.enqueue_ticket("TKT-CAUD", "normal")
+    db.create_ticket("TKT-CAUD", "Task", "work", "month")
+    db.enqueue_ticket("TKT-CAUD", "month")
     db.close_ticket("TKT-CAUD", actor="john")
     logs = db.get_audit_log("TKT-CAUD")
     actions = [l["action"] for l in logs]
@@ -263,15 +263,15 @@ def test_prefs_upsert_overwrites(vault):
 # ── audit log ─────────────────────────────────────────────────────────────────
 
 def test_get_audit_log_all(vault):
-    db.create_ticket("TKT-AL1", "Task 1", "work", "normal")
-    db.create_ticket("TKT-AL2", "Task 2", "work", "normal")
+    db.create_ticket("TKT-AL1", "Task 1", "work", "month")
+    db.create_ticket("TKT-AL2", "Task 2", "work", "month")
     logs = db.get_audit_log()
     assert len(logs) >= 2
 
 
 def test_get_audit_log_filtered_by_ticket(vault):
-    db.create_ticket("TKT-AF1", "Task 1", "work", "normal")
-    db.create_ticket("TKT-AF2", "Task 2", "work", "normal")
+    db.create_ticket("TKT-AF1", "Task 1", "work", "month")
+    db.create_ticket("TKT-AF2", "Task 2", "work", "month")
     logs = db.get_audit_log("TKT-AF1")
     assert all(l["ticket_id"] == "TKT-AF1" for l in logs)
 
@@ -279,7 +279,7 @@ def test_get_audit_log_filtered_by_ticket(vault):
 # ── get_ticket ────────────────────────────────────────────────────────────────
 
 def test_get_ticket_returns_dict(vault):
-    db.create_ticket("TKT-GT1", "Get this", "work", "normal", 20)
+    db.create_ticket("TKT-GT1", "Get this", "work", "month", 20)
     t = db.get_ticket("TKT-GT1")
     assert t is not None
     assert t["title"] == "Get this"
@@ -291,7 +291,7 @@ def test_get_ticket_none_for_missing(vault):
 
 
 def test_get_ticket_contains_status(vault):
-    db.create_ticket("TKT-GT2", "Status check", "hobby", "high", 15)
+    db.create_ticket("TKT-GT2", "Status check", "hobby", "week", 15)
     t = db.get_ticket("TKT-GT2")
     assert t["status"] == "queued"
 
@@ -303,31 +303,31 @@ def test_list_recent_empty(vault):
 
 
 def test_list_recent_returns_all(vault):
-    db.create_ticket("TKT-LR1", "First", "work", "normal")
-    db.create_ticket("TKT-LR2", "Second", "hobby", "high")
+    db.create_ticket("TKT-LR1", "First", "work", "month")
+    db.create_ticket("TKT-LR2", "Second", "hobby", "week")
     recent = db.list_recent()
     assert len(recent) == 2
 
 
 def test_list_recent_ordered_newest_first(vault):
     import time
-    db.create_ticket("TKT-LR3", "Older", "work", "normal")
+    db.create_ticket("TKT-LR3", "Older", "work", "month")
     time.sleep(0.01)
-    db.create_ticket("TKT-LR4", "Newer", "hobby", "normal")
+    db.create_ticket("TKT-LR4", "Newer", "hobby", "month")
     recent = db.list_recent()
     assert recent[0]["id"] == "TKT-LR4"
 
 
 def test_list_recent_respects_limit(vault):
     for i in range(10):
-        db.create_ticket(f"TKT-LR{i+10}", f"Task {i}", "work", "normal")
+        db.create_ticket(f"TKT-LR{i+10}", f"Task {i}", "work", "month")
     assert len(db.list_recent(limit=5)) == 5
 
 
 # ── backup_db ─────────────────────────────────────────────────────────────────
 
 def test_backup_db_creates_file(vault, tmp_path):
-    db.create_ticket("TKT-BK1", "Backup me", "work", "normal")
+    db.create_ticket("TKT-BK1", "Backup me", "work", "month")
     dest = tmp_path / "backups" / "pensieve.db.bak"
     db.backup_db(dest)
     assert dest.exists()
@@ -336,7 +336,7 @@ def test_backup_db_creates_file(vault, tmp_path):
 
 def test_backup_db_contains_data(vault, tmp_path):
     import sqlite3
-    db.create_ticket("TKT-BK2", "Preserved in backup", "property", "normal")
+    db.create_ticket("TKT-BK2", "Preserved in backup", "property", "month")
     dest = tmp_path / "pensieve.bak"
     db.backup_db(dest)
     with sqlite3.connect(str(dest)) as bk:

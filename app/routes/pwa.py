@@ -42,8 +42,8 @@ def _write(title: str, domain: str, priority: str, est_min: int = 30) -> tuple[s
     tid = write_ticket(title, domain, priority, est_min)
     write_index(tid, priority)
     who = _cf_user()
-    tag = "fire" if priority == "urgent" else "star" if priority == "high" else "scroll"
-    notify(f"New quest from {who}", title, tags=tag, priority="high" if priority == "urgent" else "default")
+    tag = "fire" if priority == "day" else "star" if priority == "week" else "scroll"
+    notify(f"New quest from {who}", title, tags=tag, priority="high" if priority == "day" else "default")
     return tid, random_ack()
 
 
@@ -104,12 +104,13 @@ def action_panel(action_id: str):
 def add_task():
     data   = request.get_json(force=True) or {}
     body   = data.get("body", "").strip()
+    priority_field = data.get("priority", "").strip()
     if not body:
         return jsonify({"error": "body required"}), 400
     if len(body) > _MAX_BODY_LEN:
         return jsonify({"error": f"body exceeds {_MAX_BODY_LEN} character limit"}), 400
     try:
-        return jsonify(_parse_and_write(body))
+        return jsonify(_parse_and_write(body, priority_override=priority_field))
     except Exception as e:
         log.error("add_task: %s", e, exc_info=True)
         return jsonify({"error": str(e)}), 500
@@ -135,7 +136,7 @@ def quick_action():
     data      = request.get_json(force=True) or {}
     action_id = data.get("action_id", "")
     user      = data.get("user", "John")
-    priority  = data.get("priority", "normal")
+    priority  = data.get("priority", "month")
 
     # Input validation
     if not _SAFE_ID.match(action_id):

@@ -8,13 +8,13 @@ from .vault import vault_root
 log = logging.getLogger(__name__)
 
 DEFAULTS = [
-    {"id": "coffee",   "icon": "☕", "label": "Coffee",      "domain": "connection",  "priority": "normal", "type": "coffee"},
-    {"id": "grocery",  "icon": "🛒", "label": "Grocery",     "domain": "property",    "priority": "normal", "type": "freeform"},
-    {"id": "hydro",    "icon": "🌱", "label": "Hydro Check", "domain": "hydroponics", "priority": "normal", "type": "prefilled",
+    {"id": "coffee",   "icon": "☕", "label": "Coffee",      "domain": "connection",  "priority": "month", "type": "coffee"},
+    {"id": "grocery",  "icon": "🛒", "label": "Grocery",     "domain": "property",    "priority": "month", "type": "freeform"},
+    {"id": "hydro",    "icon": "🌱", "label": "Hydro Check", "domain": "hydroponics", "priority": "month", "type": "prefilled",
      "task": "Check pH / EC / water level", "est_min": 15},
-    {"id": "dogs",     "icon": "🐕", "label": "Dogs",        "domain": "property",    "priority": "normal", "type": "freeform"},
-    {"id": "property", "icon": "🔧", "label": "Property",    "domain": "property",    "priority": "normal", "type": "freeform"},
-    {"id": "custom",   "icon": "✏️",  "label": "Custom",     "domain": None,          "priority": "normal", "type": "freeform"},
+    {"id": "dogs",     "icon": "🐕", "label": "Dogs",        "domain": "property",    "priority": "month", "type": "freeform"},
+    {"id": "property", "icon": "🔧", "label": "Property",    "domain": "property",    "priority": "month", "type": "freeform"},
+    {"id": "custom",   "icon": "✏️",  "label": "Custom",     "domain": None,          "priority": "month", "type": "freeform"},
 ]
 
 

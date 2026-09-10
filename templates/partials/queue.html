@@ -2,19 +2,20 @@
   {% for t in tickets %}
   <div class="quest
     {%- if loop.first %} q-head
-    {%- elif t.priority in ('critical','urgent') %} q-urgent
-    {%- elif t.priority == 'high' %} q-high
-    {%- else %} q-normal{%- endif %}">
+    {%- elif t.priority == 'day' %} q-day
+    {%- elif t.priority == 'week' %} q-week
+    {%- elif t.priority == '2weeks' %} q-2weeks
+    {%- else %} q-default{%- endif %}">
 
     <div class="quest-rank"
       style="color:
       {%- if loop.first %}var(--green)
-      {%- elif t.priority in ('critical','urgent') %}var(--red)
-      {%- elif t.priority == 'high' %}var(--amber)
+      {%- elif t.priority == 'day' %}var(--red)
+      {%- elif t.priority == 'week' %}var(--amber)
       {%- else %}var(--text-dim){%- endif %}">
       {% if loop.first %}★
-      {% elif t.priority in ('critical','urgent') %}‼
-      {% elif t.priority == 'high' %}!
+      {% elif t.priority == 'day' %}‼
+      {% elif t.priority == 'week' %}!
       {% else %}{{ loop.index }}{% endif %}
     </div>
 
@@ -22,6 +23,9 @@
       <div class="quest-title">{{ t.title }}</div>
       <div class="quest-meta">
         {% if t.domain %}<span class="quest-badge">{{ t.domain }}</span>{% endif %}
+        {% if t.priority == 'day' %}<span class="quest-prio-day">day</span>
+        {% elif t.priority == 'week' %}<span class="quest-prio-week">week</span>
+        {% elif t.priority == '2weeks' %}<span class="quest-prio-2weeks">2wk</span>{% endif %}
         {% if t.est_min %}<span class="quest-time">{{ t.est_min }}m</span>{% endif %}
         {% if loop.first %}<span class="quest-head-tag">HEAD</span>{% endif %}
       </div>

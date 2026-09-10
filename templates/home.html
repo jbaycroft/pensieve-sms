@@ -37,6 +37,17 @@
     {% endfor %}
   </div>
 
+  <!-- Timeline selector (applies to all submissions) -->
+  <div class="horizon-label">&#9200; when</div>
+  <div class="horizon-row">
+    <button class="horizon-btn" data-hz="day" onclick="Burrow.setHorizon('day',this)">day</button>
+    <button class="horizon-btn" data-hz="week" onclick="Burrow.setHorizon('week',this)">week</button>
+    <button class="horizon-btn" data-hz="2weeks" onclick="Burrow.setHorizon('2weeks',this)">2wk</button>
+    <button class="horizon-btn active" data-hz="month" onclick="Burrow.setHorizon('month',this)">month</button>
+    <button class="horizon-btn" data-hz="quarter" onclick="Burrow.setHorizon('quarter',this)">qtr</button>
+    <button class="horizon-btn" data-hz="year" onclick="Burrow.setHorizon('year',this)">year</button>
+  </div>
+
   <!-- Expandable action panels -->
   {% for action in actions %}
   <div id="slot-{{ action.id }}" class="panel-slot">

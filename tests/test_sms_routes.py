@@ -92,7 +92,7 @@ def test_test_endpoint_urgent_creates_critical_ticket(client, vault_dir):
                     content_type="application/json")
     data = r.get_json()
     path = vault_dir / "00_Queue" / "Tickets" / f"{data['ticket_id']}.md"
-    assert "priority: critical" in path.read_text()
+    assert "priority: day" in path.read_text()
 
 
 def test_test_endpoint_empty_body_returns_400(client):

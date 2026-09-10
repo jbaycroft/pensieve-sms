@@ -46,7 +46,7 @@ def vault_dir(tmp_path):
     # Write a fake existing ticket .md (Obsidian display layer)
     (tickets / "TKT-EXISTING.md").write_text(
         "---\nid: TKT-EXISTING\ntitle: Existing task\ndomain: work\n"
-        "priority: normal\nstatus: queued\ncreated: 2026-08-23\n"
+        "priority: month\nstatus: queued\ncreated: 2026-08-23\n"
         "energy: medium\nest_min: 30\nrecur: false\nsource: sms\ntags: [work]\n---\n\nExisting task\n",
         encoding="utf-8",
     )
@@ -62,8 +62,8 @@ def client(vault_dir, monkeypatch):
     app = create_app()
     app.config["TESTING"] = True
     # Seed DB with the existing ticket from vault_dir fixture
-    db_mod.create_ticket("TKT-EXISTING", "Existing task", "work", "normal")
-    db_mod.enqueue_ticket("TKT-EXISTING", "normal")
+    db_mod.create_ticket("TKT-EXISTING", "Existing task", "work", "month")
+    db_mod.enqueue_ticket("TKT-EXISTING", "month")
     with app.test_client() as c:
         yield c
 
@@ -220,7 +220,7 @@ def test_add_task_with_priority_prefix(client, vault_dir):
     assert r.status_code == 200
     data = r.get_json()
     ticket_path = vault_dir / "00_Queue" / "Tickets" / f"{data['ticket_id']}.md"
-    assert "priority: critical" in ticket_path.read_text()
+    assert "priority: day" in ticket_path.read_text()
 
 
 def test_add_task_urgent_becomes_head(client, vault_dir):
@@ -480,3 +480,49 @@ def test_complete_task_updates_ticket_status(client):
     ticket = db_mod.get_ticket('TKT-EXISTING')
     assert ticket is not None
     assert ticket['status'] == 'done'
+
+
+# ── priority / time horizon badges ─────────────────────────────────────────────────────
+
+def test_queue_shows_day_badge(client, vault_dir):
+    """A day-priority ticket should render a quest-prio-day badge in the queue."""
+    r = client.post("/api/task",
+                    data=json.dumps({"body": "!! fix production"}),
+                    content_type="application/json")
+    assert r.status_code == 200
+    r = client.get("/api/queue")
+    html = r.data.decode()
+    assert "quest-prio-day" in html
+    assert ">day<" in html
+
+
+def test_queue_shows_week_badge(client, vault_dir):
+    """A week-priority ticket should render a quest-prio-week badge."""
+    r = client.post("/api/task",
+                    data=json.dumps({"body": "! update docs"}),
+                    content_type="application/json")
+    assert r.status_code == 200
+    r = client.get("/api/queue")
+    html = r.data.decode()
+    assert "quest-prio-week" in html
+    assert ">week<" in html
+
+
+def test_queue_no_badge_for_month(client):
+    """Month-priority tickets should not have a priority badge."""
+    r = client.get("/api/queue")
+    html = r.data.decode()
+    # The pre-seeded TKT-EXISTING is month priority
+    assert "quest-prio-day" not in html
+    assert "quest-prio-week" not in html
+
+
+def test_add_task_with_explicit_priority(client, vault_dir):
+    """Sending priority as a JSON field should override the parser default."""
+    r = client.post("/api/task",
+                    data=json.dumps({"body": "clean gutters", "priority": "quarter"}),
+                    content_type="application/json")
+    assert r.status_code == 200
+    data = r.get_json()
+    ticket = db_mod.get_ticket(data["ticket_id"])
+    assert ticket["priority"] == "quarter"

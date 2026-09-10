@@ -164,12 +164,53 @@
       50%     { border-color: var(--green); box-shadow: 0 0 10px rgba(126,200,80,0.3); }
     }
 
+    /* ── Horizon selector ── */
+    .horizon-row {
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+      padding: 0.6rem 0 0.15rem;
+    }
+    .horizon-label {
+      font-size: 0.55rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      text-align: center;
+      padding: 0.35rem 0 0;
+    }
+    .horizon-btn {
+      background: var(--wood-dark);
+      border: 2px solid var(--border);
+      box-shadow: inset 1px 1px 0 rgba(196,154,47,0.15), 1px 1px 0 rgba(0,0,0,0.3);
+      color: var(--text-dim);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.68rem;
+      font-weight: 600;
+      border-radius: 4px;
+      padding: 6px 8px;
+      cursor: pointer;
+      transition: all 0.1s;
+      text-align: center;
+      flex: 1;
+      min-width: 0;
+    }
+    .horizon-btn:hover { background: var(--wood-light); color: var(--parchment-dk); }
+    .horizon-btn:active { transform: translateY(1px); }
+    .horizon-btn.active {
+      background: var(--green-dark);
+      border-color: var(--green-mid);
+      color: var(--parchment);
+      box-shadow: 0 0 8px rgba(74,138,40,0.25);
+    }
+
     /* ── Quick action row ── */
     .actions {
       display: flex;
       justify-content: center;
       gap: 6px;
-      padding: 1rem 0 0.25rem;
+      padding: 0.6rem 0 0.25rem;
     }
     .action-icon {
       width: 46px;
@@ -397,10 +438,11 @@
       animation: quest-in 0.2s ease-out both;
     }
     .quest:hover { background: #251408; }
-    .quest.q-head   { border-left-color: var(--green-mid); }
-    .quest.q-urgent { border-left-color: var(--red); }
-    .quest.q-high   { border-left-color: var(--amber); }
-    .quest.q-normal { border-left-color: var(--border); }
+    .quest.q-head    { border-left-color: var(--green-mid); }
+    .quest.q-day     { border-left-color: var(--red); }
+    .quest.q-week    { border-left-color: var(--amber); }
+    .quest.q-2weeks  { border-left-color: var(--border-mid); }
+    .quest.q-default { border-left-color: var(--border); }
     .quest.is-done {
       opacity: 0; transform: translateX(20px);
     }
@@ -458,6 +500,42 @@
       color: var(--green);
       padding: 1px 7px;
       border-radius: 2px;
+      white-space: nowrap;
+    }
+    .quest-prio-day {
+      font-size: 0.6rem;
+      font-weight: 700;
+      background: rgba(196,56,40,0.12);
+      border: 1px solid rgba(196,56,40,0.35);
+      color: var(--red);
+      padding: 1px 7px;
+      border-radius: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .quest-prio-week {
+      font-size: 0.6rem;
+      font-weight: 700;
+      background: rgba(232,176,48,0.1);
+      border: 1px solid rgba(232,176,48,0.3);
+      color: var(--amber);
+      padding: 1px 7px;
+      border-radius: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .quest-prio-2weeks {
+      font-size: 0.6rem;
+      font-weight: 700;
+      background: rgba(154,122,80,0.12);
+      border: 1px solid rgba(154,122,80,0.3);
+      color: var(--text-muted);
+      padding: 1px 7px;
+      border-radius: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
       white-space: nowrap;
     }
     .quest-done {
@@ -665,7 +743,7 @@
 // App
 var Burrow = (function() {
   var user = window._cfUser || 'John';
-  var priority = 'normal';
+  var priority = 'month';
   var openPanel = null;
   var toastTimer = null;
   var locks = {};
@@ -755,6 +833,13 @@ var Burrow = (function() {
     });
   }
 
+  function setHorizon(value, el) {
+    priority = value;
+    var btns = document.querySelectorAll('.horizon-btn');
+    for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+    if (el) el.classList.add('active');
+  }
+
   function submitTask() {
     var inp = document.getElementById('cmd-input');
     var btn = document.getElementById('cmd-submit');
@@ -763,17 +848,16 @@ var Burrow = (function() {
     if (!lock('submit')) return;
     setLoading(btn, true);
 
-    var prefix = priority === 'urgent' ? '!! ' : priority === 'high' ? '! ' : '';
     api('/api/task', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ body: prefix + body, user: user })
+      body: JSON.stringify({ body: body, user: user, priority: priority })
     })
     .then(function(d) {
       if (d.ticket_id) {
         toast('\u2605 ' + d.enhanced);
         inp.value = '';
-        priority = 'normal';
+        setHorizon('month', document.querySelector('.horizon-btn[data-hz="month"]'));
         htmx.trigger('#quest-log', 'refresh');
       } else toast('\u2717 ' + (d.error || 'Something went wrong'));
     })
@@ -802,7 +886,7 @@ var Burrow = (function() {
       if (d.ticket_id) {
         toast('\u2605 ' + d.enhanced);
         closePanel();
-        priority = 'normal';
+        setHorizon('month', document.querySelector('.horizon-btn[data-hz="month"]'));
         htmx.trigger('#quest-log', 'refresh');
       } else toast('\u2717 ' + (d.error || 'Something went wrong'));
     })
@@ -841,7 +925,8 @@ var Burrow = (function() {
     fireCoffee: fireCoffee,
     submitTask: submitTask,
     fireAction: fireAction,
-    completeTask: completeTask
+    completeTask: completeTask,
+    setHorizon: setHorizon
   };
 })();
 

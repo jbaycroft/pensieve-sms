@@ -24,7 +24,7 @@ DOMAIN_MAP: dict[str, str] = {
 
 @dataclass
 class ParseResult:
-    priority: str          # "urgent" | "high" | "normal"
+    priority: str          # "day" | "week" | "2weeks" | "month" | "quarter" | "year"
     est_min: int           # minutes, default 30
     domain: Optional[str]  # None = needs LLM inference
     raw_text: str          # body after all prefixes stripped
@@ -34,11 +34,11 @@ def parse(body: str) -> ParseResult:
     text = body.strip()
 
     # 1. Priority
-    priority = "normal"
+    priority = "month"
     if text.startswith("!!"):
-        priority, text = "urgent", text[2:].strip()
+        priority, text = "day", text[2:].strip()
     elif text.startswith("!"):
-        priority, text = "high", text[1:].strip()
+        priority, text = "week", text[1:].strip()
 
     # 2. Time prefix (pure digits followed by colon)
     est_min = 30

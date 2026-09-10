@@ -176,18 +176,18 @@ def enqueue_ticket(ticket_id: str, priority: str) -> None:
     """
     Insert ticket_id into queue_order at priority-appropriate position.
 
-    urgent → position 1 (new HEAD, all others shift down)
-    high   → position 2 (after current HEAD, positions ≥ 2 shift down)
-    normal → MAX(position) + 1 (tail)
+    day  → position 1 (new HEAD, all others shift down)
+    week → position 2 (after current HEAD, positions ≥ 2 shift down)
+    *    → MAX(position) + 1 (tail)
     """
     conn = get_conn()
-    if priority == "urgent":
+    if priority == "day":
         conn.execute("UPDATE queue_order SET position = position + 1")
         conn.execute(
             "INSERT OR IGNORE INTO queue_order (position, ticket_id) VALUES (1, ?)",
             (ticket_id,),
         )
-    elif priority == "high":
+    elif priority == "week":
         conn.execute(
             "UPDATE queue_order SET position = position + 1 WHERE position >= 2"
         )

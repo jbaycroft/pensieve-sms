@@ -24,7 +24,7 @@ from typing import Optional
 log = logging.getLogger(__name__)
 _VAULT_ROOT: Optional[pathlib.Path] = None
 
-PRIORITY_MAP = {"urgent": "critical", "high": "high", "normal": "normal"}
+VALID_HORIZONS = {"day", "week", "2weeks", "month", "quarter", "year"}
 
 
 def vault_root() -> pathlib.Path:
@@ -70,10 +70,10 @@ def write_index(ticket_id: str, priority: str) -> None:
     1. Updates queue_order in SQLite (primary)
     2. Updates Index.md in vault (display layer for Obsidian)
 
-    Priority rules:
-      urgent → position 1 (new HEAD)
-      high   → position 2 (after current HEAD)
-      normal → tail (FIFO)
+    Priority rules (by time horizon):
+      day  → position 1 (new HEAD)
+      week → position 2 (after current HEAD)
+      *    → tail (FIFO)
     """
     from . import database
 
@@ -119,7 +119,7 @@ def _write_ticket_md(
 ) -> None:
     """Write the Obsidian-facing .md file for a new ticket."""
     date_str = now.strftime("%Y-%m-%d")
-    prio_display = PRIORITY_MAP.get(priority, "normal")
+    prio_display = priority if priority in VALID_HORIZONS else "month"
 
     ticket_dir = vault_root() / "00_Queue" / "Tickets"
     ticket_dir.mkdir(parents=True, exist_ok=True)
@@ -155,11 +155,11 @@ def _update_index_md(ticket_id: str, priority: str) -> None:
     content = index_path.read_text(encoding="utf-8")
     pointer = f"[[{ticket_id}]]\n"
 
-    if priority == "urgent":
+    if priority == "day":
         m = re.search(r"%%[\s\S]*?%%\n?", content)
         pos = m.end() if m else 0
         content = content[:pos] + "\n" + pointer + content[pos:]
-    elif priority == "high":
+    elif priority == "week":
         m = re.search(r"\[\[.*?\]\]\n", content)
         pos = m.end() if m else len(content)
         content = content[:pos] + pointer + content[pos:]
