@@ -1,0 +1,4 @@
+# Allow jbaycroft to restart pensieve services without a password.
+# Used by the pensieve-sync auto-sync script.
+jbaycroft ALL=(root) NOPASSWD: /usr/bin/systemctl restart pensieve-flask.service
+jbaycroft ALL=(root) NOPASSWD: /usr/bin/systemctl restart pensieve-flask

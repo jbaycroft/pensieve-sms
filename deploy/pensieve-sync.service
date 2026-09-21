@@ -1,0 +1,27 @@
+[Unit]
+Description=The Burrow — Git auto-sync (pensieve-sms)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=jbaycroft
+Group=jbaycroft
+WorkingDirectory=/home/jbaycroft/TheBurrow/pensieve-sms
+ExecStart=/home/jbaycroft/TheBurrow/pensieve-sms/deploy/pensieve-sync.sh
+Environment=HOME=/home/jbaycroft
+Environment=GIT_AUTHOR_NAME=pensieve-sync
+Environment=GIT_AUTHOR_EMAIL=pensieve@theburrow.house
+Environment=GIT_COMMITTER_NAME=pensieve-sync
+Environment=GIT_COMMITTER_EMAIL=pensieve@theburrow.house
+# gh CLI needs this for auth
+Environment=GH_CONFIG_DIR=/home/jbaycroft/.config/gh
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pensieve-sync
+
+# Safety
+TimeoutStartSec=120
+Nice=10

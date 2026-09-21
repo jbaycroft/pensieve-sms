@@ -1,0 +1,11 @@
+[Unit]
+Description=The Burrow — Git auto-sync timer (hourly)
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1h
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
